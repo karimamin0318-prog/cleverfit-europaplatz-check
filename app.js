@@ -100,7 +100,44 @@ console.assert(guessIcon('Bodyshake-Automaten putzen und auffüllen') === '🥤'
 console.assert(guessIcon('Letzter Umkleide- und Flächencheck (Mittel auffüllen, wenn leer)') === '🔍');
 console.assert(guessIcon('Alle Kunden auschecken') === '👋');
 console.assert(guessIcon('Studio zusperren') === '🔑' && guessIcon('Fläche aufräumen') === '🏋️');
-const iconChip = t => t.icon ? `<span class="ticon" title="${esc(TASK_ICONS.find(([i]) => i === t.icon)?.[1] || '')}">${esc(t.icon)}</span>` : '';
+// Eigene Schwarz-Weiß-Symbole statt bunter Emojis. Gespeichert wird weiter das Emoji (Daten bleiben gleich), angezeigt das Symbol.
+// 24er-Raster, nur Linien (Farbe = currentColor). Unbekannte eigene Emojis bleiben Text, aber grau.
+const GLYPHS = {
+  '💶': '<rect x="2.5" y="6" width="19" height="12" rx="1.5"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/>',
+  '📱': '<rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M11 18h2"/>',
+  '🗑': '<path d="M4 7h16M10 3.5h4M6 7l1 13.5h10L18 7M10 11v5.5M14 11v5.5"/>',
+  '📦': '<path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5 12 12l9-4.5M12 12v9"/>',
+  '🥤': '<path d="M5 9h14M6.5 9 8 21h8l1.5-12M7 9c0-2.6 2.2-4 5-4s5 1.4 5 4M12 5l3-2.5"/>',
+  '☕': '<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10.5h1.5a2.5 2.5 0 0 1 0 5H17M8.5 3v3M12.5 3v3"/>',
+  '🧃': '<path d="M10 2.5h4M10.5 2.5V6L8 9v12h8V9l-2.5-3V2.5M8 13.5h8"/>',
+  '💡': '<path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-3.5 10.9c.8.6 1.5 1.5 1.5 2.6v1.5h4v-1.5c0-1.1.7-2 1.5-2.6A6 6 0 0 0 12 3z"/>',
+  '🔑': '<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M16 7l3 3M13.5 9.5l2 2"/>',
+  '📺': '<rect x="3" y="6" width="18" height="12.5" rx="2"/><path d="M8 21.5h8M8.5 2.5 12 6l3.5-3.5"/>',
+  '🪟': '<rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M12 3v18M4 12h16"/>',
+  '🧴': '<path d="M8 10h8v10a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 20zM10 10V7h4v3M12 7V4H9M10 15.5h4M12 13.5v4"/>',
+  '👋': '<circle cx="12" cy="7.5" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  '🔍': '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>',
+  '🏋': '<path d="M6.5 6v12M17.5 6v12M3 9v6M21 9v6M6.5 12h11"/>',
+  '🧽': '<path d="M10 3.5l1.6 4.9 4.9 1.6-4.9 1.6-1.6 4.9-1.6-4.9L3.5 10l4.9-1.6zM18 14l.8 2.2 2.2.8-2.2.8L18 20l-.8-2.2-2.2-.8 2.2-.8z"/>',
+  '⏱': '<circle cx="12" cy="13.5" r="7.5"/><path d="M10 2.5h4M12 13.5v-4M18.5 7 20 5.5"/>',
+  '🏠': '<path d="M3.5 11 12 3.5l8.5 7.5M6 9v11.5h12V9M10 20.5v-6h4v6"/>',
+  '📍': '<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+  '💧': '<path d="M12 3c3.5 4.5 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 2.5-6.5 6-11z"/>',
+  '🧻': '<ellipse cx="6.5" cy="8" rx="3" ry="5"/><path d="M6.5 3H17a3 5 0 0 1 0 10H6.5M11 13v8h6v-8"/>',
+  '🧹': '<path d="M17.5 2.5 13 12M7.5 12h9l2 9h-13zM10 16v5M14 16v5"/>',
+  '🧯': '<path d="M8 21.5V11a4 4 0 0 1 8 0v10.5zM12 7V4M8.5 4H16l3 2"/>',
+  '🔌': '<path d="M9 2.5v4.5M15 2.5v4.5M6 7h12v4a6 6 0 0 1-12 0zM12 17v4.5"/>',
+  '🚪': '<path d="M6 21V3h12v18M3.5 21h17"/><circle cx="14.5" cy="12" r="1" fill="currentColor" stroke="none"/>',
+  '🚿': '<path d="M5 21V7a4 4 0 0 1 8 0v1M9 8h8M11 11.5v.5M15 11.5v.5M13 14.5v.5M10 17v.5M16 17v.5M13 20v.5"/>',
+  '❄': '<path d="M12 2.5v19M3.8 7.3l16.4 9.4M3.8 16.7l16.4-9.4M9 4.5l3 2 3-2M9 19.5l3-2 3 2"/>',
+};
+const glyphOf = icon => GLYPHS[String(icon || '').replace(/\uFE0F/g, '')];
+// attrs: z.B. Position/Größe, wenn das Symbol in der Karte (SVG) sitzt
+const glyph = (icon, attrs = '') => glyphOf(icon)
+  ? `<svg class="glyph" viewBox="0 0 24 24" ${attrs} aria-hidden="true">${glyphOf(icon)}</svg>`
+  : `<span class="glyph-txt">${esc(icon || '•')}</span>`;
+console.assert(TASK_ICONS.every(([i]) => glyphOf(i)));
+const iconChip = t => t.icon ? `<span class="ticon" title="${esc(TASK_ICONS.find(([i]) => i === t.icon)?.[1] || '')}">${glyph(t.icon)}</span>` : '';
 
 // To-dos vom Chef. „ab X“ = Zeitfenster von X bis zum nächsten Block (bzw. Schichtende); „@X“ = feste Uhrzeit.
 // Putz-Zuteilung: Früh = Cardio, Mittel = Stack Loaded, Spät = Plate Loaded + Legs & Bänke.
@@ -331,11 +368,12 @@ function zoneSvg(z, { done = false, sel = false, piece = -1, hl = false, green =
 function markerSvg(m, { hl = false, sel = false } = {}) {
   return `<g class="marker ${hl ? 'hl' : ''} ${sel ? 'sel' : ''}" data-marker="${m.id}" transform="translate(${m.x} ${m.y})">
     <title>${esc(m.name)}</title>${hl ? '<circle class="pulse" r="11"/>' : ''}<circle r="11"/>
-    <text class="ico" font-size="12">${esc(m.icon || '•')}</text></g>`; // nur Icon, Name als Tooltip
+    ${glyphOf(m.icon) ? glyph(m.icon, 'x="-7" y="-7" width="14" height="14"') : `<text class="ico" font-size="12">${esc(m.icon || '•')}</text>`}</g>`; // nur Icon, Name als Tooltip
 }
 const MARKER_ICONS = [['🗑️', 'Mülltonne'], ['💧', 'Getränkebar'], ['🥤', 'Bodyshake'], ['☕', 'Kaffeeautomat'], ['📱', 'Studio-Tablet'],
   ['💡', 'Lichtschalter'], ['📺', 'Fernseher'], ['🪟', 'Fenster'], ['🧴', 'Desinfektion'], ['🧻', 'Papierspender'], ['🧹', 'Putzmittel'],
   ['🧯', 'Feuerlöscher'], ['🔌', 'Steckdose'], ['📦', 'Kiste'], ['🚪', 'Tür'], ['❄️', 'Kühlschrank'], ['📍', 'Sonstiges']];
+console.assert(MARKER_ICONS.every(([i]) => glyphOf(i)));
 const inRect = (m, [x, y, w, h]) => m.x >= x && m.x <= x + w && m.y >= y && m.y <= y + h;
 const markerZone = m => db.zones.find(z => z.rects.some(r => inRect(m, r)))?.id;
 function mapSvg(cls, inner) { // gemeinsamer Rahmen für Dashboard- und Putzplan-Karte
@@ -688,7 +726,7 @@ function edPanel() {
   if (mk) return `<div class="admin-sec ed-form"><h3>Punkt</h3>
     <label>Name<input data-mf="name" value="${esc(mk.name)}"></label>
     <span class="lbl">Symbol</span><div class="icon-pick">${markerIcons().map(([i, n]) =>
-      `<button class="${i === mk.icon ? 'active' : ''}" data-ed="icon" data-val="${esc(i)}" title="${esc(n)}">${esc(i)}</button>`).join('')}</div>
+      `<button class="${i === mk.icon ? 'active' : ''}" data-ed="icon" data-val="${esc(i)}" title="${esc(n)}">${glyph(i)}</button>`).join('')}</div>
     <label>Eigenes Symbol (Emoji oder Buchstabe)<input data-mf="icon" value="${esc(mk.icon || '')}" maxlength="4"></label>
     <p class="meta">Liegt in: <b>${esc(ui.draft.find(z => z.rects.some(r => inRect(mk, r)))?.name || 'keinem Bereich')}</b></p>
     <div class="row"><button class="btn small ghost danger" data-ed="delMarker">Punkt löschen</button></div></div>`;
@@ -1023,7 +1061,7 @@ function drawPick() {
   const any = zsel.size || pick.markers.size;
   $('#ortMap').innerHTML = mapSvg(`pick ${any && !pick.placing ? 'focus' : ''} ${pick.placing ? 'placing' : ''}`,
     db.zones.map(z => zoneSvg(z, { hl: zsel.has(z.id) })).join('') + pickMarkers().map(m => markerSvg(m, { sel: pick.markers.has(m.id) })).join(''));
-  const names = [...[...zsel].map(id => db.zones.find(z => z.id === id)?.name), ...pickMarkers().filter(m => pick.markers.has(m.id)).map(m => `${m.icon} ${m.name}`)].filter(Boolean);
+  const names = [...[...zsel].map(id => db.zones.find(z => z.id === id)?.name), ...pickMarkers().filter(m => pick.markers.has(m.id)).map(m => m.name)].filter(Boolean);
   $('#ortSummary').innerHTML = names.length ? `Ausgewählt: <b>${esc(names.join(', '))}</b>` : 'Nichts ausgewählt – Bereich oder Punkt antippen.';
 }
 $('#ortMap').addEventListener('click', e => {
@@ -1054,7 +1092,7 @@ const setPlacing = i => {
 };
 function stopPlacing() { pick.placing = null; $('#newPointBar').hidden = true; $('#newPointBtn').hidden = false; $('#newPointName').value = ''; $('#newPointEmoji').value = ''; }
 $('#newPointBtn').onclick = () => {
-  $('#newPointIcons').innerHTML = markerIcons().map(([i, n]) => `<button type="button" data-picon="${esc(i)}" title="${esc(n)}">${esc(i)}</button>`).join('');
+  $('#newPointIcons').innerHTML = markerIcons().map(([i, n]) => `<button type="button" data-picon="${esc(i)}" title="${esc(n)}">${glyph(i)}</button>`).join('');
   $('#newPointBar').hidden = false; $('#newPointBtn').hidden = true; setPlacing(MARKER_ICONS[0][0]);
 };
 $('#newPointEmoji').addEventListener('input', e => { const v = e.target.value.trim(); if (v) { pick.placing = v; $('#newPointIcons').querySelectorAll('button').forEach(b => b.classList.remove('active')); drawPick(); } });
@@ -1065,7 +1103,7 @@ form.elements.type.onchange = showTypeFields;
 // Icon-Auswahl im Dialog; solange nicht selbst gewählt, schlägt der Titel ein Icon vor
 let iconTouched = false;
 $('#taskIcons').innerHTML = '<button type="button" data-ticon="" title="Kein Icon">–</button>' +
-  TASK_ICONS.map(([i, n]) => `<button type="button" data-ticon="${i}" title="${n}">${i}</button>`).join('');
+  TASK_ICONS.map(([i, n]) => `<button type="button" data-ticon="${i}" title="${n}">${glyph(i)}</button>`).join('');
 function setTaskIcon(i) {
   form.elements.icon.value = i;
   form.querySelectorAll('[data-ticon]').forEach(b => b.classList.toggle('active', b.dataset.ticon === i));
