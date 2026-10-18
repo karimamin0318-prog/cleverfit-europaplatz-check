@@ -1,7 +1,7 @@
 // Studio Check – Clever Fit Europaplatz. Alles lokal im Browser (localStorage).
 // shortcut: Daten nur auf diesem Gerät; für mehrere Geräte ein Backend (z.B. Supabase) nachrüsten.
 
-const hm = t => t === '24:00' ? '00:00' : t; // Anzeige
+const hm = t => t >= '24:00' ? String(+t.slice(0, 2) - 24).padStart(2, '0') + t.slice(2) : t; // Anzeige: 24:30 → 00:30
 const FREE_COLOR = '#bdbdbd'; // Bereich ohne Schicht und ohne eigene Farbe
 // Bereichsfarben (Ansicht „nach Bereich“): Gruppen in Farbfamilien, kein Rot/Grün (= überfällig/erledigt)
 const AREA_COLORS = {
@@ -11,12 +11,18 @@ const AREA_COLORS = {
   theke: '#111111', ma_vorne: '#6b7280', ma_hinten: '#6b7280', lager: '#6b7280', eingang: '#a8a29e',
 };
 const KEY = 'cfcheck-v2'; // v2: neue Karte mit Bereichen aus dem eigenen Layout
-const MAP_V = 3; // erhöhen, wenn sich die Standard-Karte ändert (eigene Layouts haben mapV 'custom')
 const ED = { W: 800, H: 600, MIN: 10 }; // Zeichenfläche des Layout-Editors
 
-const today = () => new Date().toLocaleDateString('sv'); // YYYY-MM-DD in Ortszeit
+// Arbeitstag wechselt erst um 4 Uhr: Zusperren um 00:05 gehört noch zum Vortag.
+const DAY_START_H = 4;
+const bizDay = (d = new Date()) => new Date(d - DAY_START_H * 3600e3).toLocaleDateString('sv'); // YYYY-MM-DD
+const today = () => bizDay();
 const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
-const nowHM = () => new Date().toTimeString().slice(0, 5);
+// Uhrzeit im Arbeitstag: nach Mitternacht 24:05 statt 00:05, damit Vergleiche mit 23:59 stimmen
+const bizHM = d => { const h = d.getHours(), s = d.toTimeString().slice(2, 5); return (h < DAY_START_H ? h + 24 : h).toString().padStart(2, '0') + s; };
+const nowHM = () => bizHM(new Date());
+console.assert(bizDay(new Date(2026, 9, 19, 0, 30)) === '2026-10-18' && bizHM(new Date(2026, 9, 19, 0, 5)) === '24:05');
+console.assert(bizDay(new Date(2026, 9, 19, 4, 0)) === '2026-10-19' && bizHM(new Date(2026, 9, 19, 6, 0)) === '06:00');
 const fmtDate = s => s.split('-').reverse().join('.');
 const uid = () => Math.random().toString(36).slice(2, 9);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
@@ -155,6 +161,7 @@ const CHEF_HOURLY = [ // stündlich: Frühschicht immer (Fenster = Schichtzeit d
   ['Hygienecheck (Kabinen, Massageliege, Solarium, Fläche)', ['massage', 'sol1', 'sol2']],
   ['Bodyshake, Kaffeeautomat & Getränkebar auf Bestand prüfen', []],
 ];
+const rulesOf = title => { const r = guessRules(title); return r.length ? { markerRules: r } : {}; };
 function chefTasks() {
   const out = [];
   for (const [days, shifts] of Object.entries(CHEF_TODOS))
@@ -165,27 +172,16 @@ function chefTasks() {
         if (key.includes('-')) [from, to] = key.split('-'); // festes Fenster „12:00-16:00“
         for (const item of blocks[key]) {
           const [title, zoneIds] = Array.isArray(item) ? item : [item];
-          out.push({ id: uid(), type: 'schicht', days, title, icon: guessIcon(title), shift,
+          out.push({ id: uid(), type: 'schicht', days, title, icon: guessIcon(title), ...rulesOf(title), shift,
             ...(from.startsWith('@') ? { time: at(from) } : { from, to }), ...(zoneIds && { zoneIds }) });
         }
       });
     }
   for (const shift of ['frueh', 'mittel'])
     for (const [title, zoneIds] of CHEF_HOURLY)
-      out.push({ id: uid(), type: 'schicht', title, icon: guessIcon(title), shift, hourly: true, ...(shift === 'mittel' && { days: 'wt' }), ...(zoneIds.length && { zoneIds }) });
+      out.push({ id: uid(), type: 'schicht', title, icon: guessIcon(title), ...rulesOf(title), shift, hourly: true, ...(shift === 'mittel' && { days: 'wt' }), ...(zoneIds.length && { zoneIds }) });
   return out;
 }
-const CHEF_TITLES = new Set(Object.values(CHEF_TODOS.wt).flatMap(b => Object.values(b).flat().map(i => Array.isArray(i) ? i[0] : i)));
-const OLD_DUSTING = ['Linke Seite und Laufbänder abstauben', 'Mitte, Mitte oben und mittlere rechte Gerätereihe abstauben', 'Rechte Seite Cardio vorne und oben abstauben'];
-// Meine früheren Beispiel-Aufgaben (zum einmaligen Aufräumen bestehender Daten)
-const OLD_DEMO_TITLES = new Set(['Studio aufsperren, Licht & Musik an', 'Getränkeautomat & Kühlschrank auffüllen', 'Handtücher & Desinfektion nachfüllen',
-  'Rundgang: Geräte zurückräumen', 'Theke aufräumen, Kasse prüfen', 'Getränke nachfüllen', 'Rundgang: Hanteln einsortieren',
-  'Kasse abschließen, Licht aus, absperren', 'Polster aller Geräte reinigen', 'Rig & Boden reinigen', 'Kleingeräte sortieren',
-  'Polster desinfizieren', 'Bänke abwischen', 'Scheiben einsortieren', 'Racks abwischen', 'Smith Maschine abwischen',
-  'Griffe & Polster desinfizieren', 'Griffe sortieren', 'Kabeltürme abwischen', 'Polster & Griffe desinfizieren',
-  'Displays & Griffe desinfizieren', 'Boden saugen', 'Boden wischen', 'Eingangstür reinigen', 'Theke abwischen', 'Aufräumen',
-  'Ordnung kontrollieren', 'Kurzhanteln einsortieren', 'Liege desinfizieren', 'Solarium reinigen', 'Böden wischen', 'WC & Duschen reinigen']);
-
 // Vorlagen + selbst angelegte Emojis (werden beim Speichern eines Punkts gemerkt)
 const markerIcons = () => [...MARKER_ICONS, ...(db.customIcons || [])];
 const rememberIcons = markers => {
@@ -240,58 +236,38 @@ function seed() {
     { id: 'lager',      name: 'Lager',                     shift: 'spaet',  rects: [[550, 290, 50, 100], [510, 290, 90, 30]] },
     { id: 'cardio',     name: 'Cardio Bereich',            label: 'Cardio', shift: 'frueh', rects: [[80, 400, 420, 80], [130, 330, 50, 60]] },
   ];
-  const tasks = [...chefTasks(), { id: uid(), type: 'intervall', title: 'Natural Power Serum Deep Clean', icon: '🧽', everyDays: 14, startDate: today() }];
+  const tasks = [...chefTasks(), { id: uid(), type: 'intervall', title: 'Natural Power Serum Deep Clean', icon: '🧽', markerRules: ['bar'], everyDays: 14, startDate: today() }];
   zones.forEach(z => z.color = AREA_COLORS[z.id]);
-  return { pin: '1234', mapV: MAP_V, colorsV: 1, tasksV: 4, colorBy: 'schicht', tasks, zones, done: {} };
+  return { pin: '1234', colorBy: 'schicht', tasks, zones, done: {} };
 }
 
 let db;
-try { db = JSON.parse(localStorage.getItem(KEY)) || seed(); } catch { db = seed(); }
-const save = () => localStorage.setItem(KEY, JSON.stringify(db));
-if (db.mapV !== MAP_V && db.mapV !== 'custom') { // neue Karte übernehmen, Aufgaben/Häkchen und Schicht-Zuteilung behalten
-  const old = Object.fromEntries(db.zones.map(z => [z.id, z]));
-  db.zones = seed().zones.map(z => old[z.id] ? { ...z, shift: old[z.id].shift } : z);
-  db.mapV = MAP_V;
+{ // Laden; ist der Speicher unlesbar, Rohtext sichern statt still zu überschreiben
+  const raw = localStorage.getItem(KEY);
+  try { db = raw ? JSON.parse(raw) : null; } catch {
+    localStorage.setItem(KEY + '-defekt', raw);
+    alert('Die gespeicherten Daten waren beschädigt und wurden als „' + KEY + '-defekt“ gesichert. Die App startet mit den Standarddaten – bitte ein Backup importieren.');
+  }
+  db ||= seed();
 }
-if (!db.colorsV) { // Bereichsfarben einmalig nachtragen, eigene Farben bleiben
-  db.zones.forEach(z => { if (!z.color && AREA_COLORS[z.id]) z.color = AREA_COLORS[z.id]; });
-  db.colorsV = 1; db.colorBy ??= 'schicht';
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch { alert('Speichern fehlgeschlagen – der Browser-Speicher ist voll oder gesperrt. Bitte ein Backup herunterladen und den Admin informieren.'); }
 }
-if (!(db.tasksV >= 2)) { // Beispiel-Aufgaben raus, Chef-To-dos rein; selbst angelegte Aufgaben bleiben
-  db.tasks = db.tasks.filter(t => !OLD_DEMO_TITLES.has(t.title));
-  db.tasks.push(...chefTasks());
-  if (!db.tasks.some(t => t.title === 'Natural Power Serum Deep Clean'))
-    db.tasks.push({ id: uid(), type: 'intervall', title: 'Natural Power Serum Deep Clean', icon: '🧽', everyDays: 14, startDate: today() });
-  const ids = new Set(db.tasks.map(t => t.id));
-  for (const k of Object.keys(db.done)) if (!ids.has(k.split('|')[0])) delete db.done[k];
-  db.tasksV = 2;
-}
-if (db.tasksV === 2) { // Icons für vorhandene Aufgaben (eigene Icons bleiben)
-  db.tasks.forEach(t => { t.icon ??= guessIcon(t.title); });
-  db.tasksV = 3;
-}
-if (db.tasksV === 3) { // Werktag/Wochenende, neue Putz-Zuteilung, Wochenend-Liste
-  db.tasks = db.tasks.filter(t => !OLD_DUSTING.includes(t.title));
-  db.tasks.forEach(t => {
-    if (t.type === 'schicht' && !t.days && (CHEF_TITLES.has(t.title) || t.hourly && t.shift === 'mittel')) t.days = 'wt';
-  });
-  const fresh = chefTasks(), have = new Set(db.tasks.map(t => `${t.days}|${t.shift}|${t.title}`));
-  db.tasks.push(...fresh.filter(t => !have.has(`${t.days}|${t.shift}|${t.title}`)));
-  const assign = { cardio: 'frueh', stack: 'mittel', plate: 'spaet', legs: 'spaet' };
-  db.zones.forEach(z => { if (assign[z.id]) z.shift = assign[z.id]; });
-  const ids = new Set(db.tasks.map(t => t.id));
-  for (const k of Object.keys(db.done)) if (!ids.has(k.split('|')[0])) delete db.done[k];
-  db.tasksV = 4;
-}
+db.colorBy ??= 'schicht';
 db.mittelDays ??= {}; // Wochenende/Feiertag: Tage mit Mittelschicht { '2026-10-18': true }
 db.holidays ??= []; // zusätzliche Feiertage/Sonderöffnungstage (YYYY-MM-DD)
 db.markers ??= []; // Punkte: Mülltonne, Wasserspender … ({ id, name, icon, x, y })
 db.customIcons ??= []; // eigene Punkt-Emojis [[icon, name]]
-if (!db.markerRulesV) {
-  db.tasks.forEach(t => { const r = guessRules(t.title); if (r.length && !t.markerRules) t.markerRules = r; });
-  db.markerRulesV = 1;
-}
 db.layouts ??= []; // gespeicherte Layouts: { id, studio, name, note, savedAt, zones, markers }
+// Speicher klein halten: Häkchen älter als 60 Tage und von gelöschten Aufgaben weg (Intervall-Häkchen bleiben für „zuletzt erledigt“)
+{
+  const byId = new Map(db.tasks.map(t => [t.id, t])), cutoff = Date.now() - 60 * 864e5;
+  for (const [k, v] of Object.entries(db.done)) {
+    const t = byId.get(k.split('|')[0]);
+    if (!t || t.type !== 'intervall' && Date.parse(v) < cutoff) delete db.done[k];
+  }
+}
 save();
 
 const ui = { tab: 'dashboard', admin: false, shift: currentShift(), zone: null, pick: null, doneOpen: false, showMarkers: false };
@@ -339,7 +315,9 @@ const fillOf = z => db.colorBy === 'bereich'
   : SHIFTS[effShift(z.shift)]?.color || z.color || FREE_COLOR;
 const colorToggle = () => `<div class="seg small">${[['schicht', 'Nach Schicht'], ['bereich', 'Nach Bereich']].map(([k, l]) =>
   `<button data-colorby="${k}" class="${db.colorBy === k ? 'active' : ''}">${l}</button>`).join('')}</div>`;
-const zoneDone = z => { const l = db.tasks.filter(t => t.zoneId === z.id); return l.length > 0 && l.every(doneAt); };
+// Heutige Aufgaben eines Bereichs (Putzbereich-Aufgaben, Orte und Punkte) – gilt für Dashboard und Putzplan gleich
+const zoneTasks = z => todayTasks().filter(t => taskZones(t).includes(z.id));
+const zoneDone = z => { const l = zoneTasks(z); return l.length > 0 && l.every(doneAt); };
 
 function svgLabel([x, y, w, h], txt) {
   const rot = h > w * 1.4, long = rot ? h : w, short = rot ? w : h;
@@ -384,7 +362,7 @@ function fitView(zones) {
 // --- Dashboard: alle heutigen Aufgaben in zeitlicher Reihenfolge + Karte ---
 const taskZones = t => [...new Set([...(t.type === 'zone' ? [t.zoneId] : t.zoneIds || []), ...taskMarkers(t).map(markerZone).filter(Boolean)])];
 const taskShift = t => effShift(t.type === 'zone' ? db.zones.find(z => z.id === t.zoneId)?.shift : t.shift);
-const isToday = iso => !!iso && new Date(iso).toLocaleDateString('sv') === today();
+const isToday = iso => !!iso && bizDay(new Date(iso)) === today();
 // Intervall-Aufgaben nur, wenn fällig (offen) oder heute erledigt
 const win = t => [t.from || SHIFTS[t.shift]?.from || '00:00', t.to || SHIFTS[t.shift]?.to || '24:00'];
 const nextHour = () => String(+nowHM().slice(0, 2) + 1).padStart(2, '0') + ':00';
@@ -402,6 +380,7 @@ const byTime = (a, b) => sortKey(a).localeCompare(sortKey(b)) || endKey(a).local
 const HL_FILTER = `<filter id="hlOutline" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="4" result="d"/>
   <feFlood flood-color="#111"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
 
+const placeNames = t => [...new Set(taskMarkers(t).map(m => m.name)), ...(t.type === 'zone' ? [t.zoneId] : t.zoneIds || []).map(id => db.zones.find(z => z.id === id)?.name)].filter(Boolean);
 function dashRow(t, isNext = false) {
   const d = doneAt(t), s = taskShift(t);
   const since = t.type === 'intervall' ? dayNum(today()) - (dayNum(t.startDate) + period(t) * t.everyDays) : 0;
@@ -409,7 +388,7 @@ function dashRow(t, isNext = false) {
   const tag = t.type === 'intervall' ? '<span class="tag imp">Wichtig · Intervall</span>'
     : s ? `<span class="tag" style="--c:${SHIFTS[s].color}">${SHIFTS[s].name.replace('schicht', '')}</span>` : '';
   const when = t.type === 'intervall' ? `alle ${t.everyDays} Tage` : whenText(t);
-  const places = [...new Set(taskMarkers(t).map(m => m.name)), ...(t.type === 'zone' ? [t.zoneId] : t.zoneIds || []).map(id => db.zones.find(z => z.id === id)?.name)].filter(Boolean).join(', ');
+  const places = placeNames(t).join(', ');
   const stripe = t.type === 'intervall' ? 'var(--red)' : SHIFTS[s]?.color || 'transparent';
   return `<div class="task dash ${d ? 'done' : ''} ${ui.pick === t.id ? 'picked' : ''} ${isNext ? 'next' : ''}" data-pick="${t.id}" tabindex="0" style="--stripe:${stripe}">
     <button class="check" data-toggle="${t.id}" aria-label="${d ? 'Wieder öffnen' : 'Erledigt'}">${d ? '✓' : ''}</button>
@@ -440,9 +419,8 @@ const views = {
     const imp = open.filter(t => t.type === 'intervall'), todo = open.filter(t => t.type !== 'intervall'), next = todo[0];
     const pick = ui.hideMap ? null : db.tasks.find(t => t.id === ui.pick) || next, auto = pick && pick === next && !ui.pick;
     const hl = new Set(pick ? taskZones(pick) : []);
-    const allDone = z => { const l = list.filter(t => taskZones(t).includes(z.id)); return l.length > 0 && l.every(doneAt); };
     const pm = new Set(pick ? taskMarkers(pick).map(m => m.id) : []); // Punkte der Aufgabe immer zeigen, auch wenn ausgeblendet
-    const map = mapSvg(hl.size || pm.size ? 'focus' : '', db.zones.map(z => zoneSvg(z, { green: allDone(z), hl: hl.has(z.id), sel: ui.zone === z.id })).join('')
+    const map = mapSvg(hl.size || pm.size ? 'focus' : '', db.zones.map(z => zoneSvg(z, { green: zoneDone(z), hl: hl.has(z.id), sel: ui.zone === z.id })).join('')
       + db.markers.filter(m => ui.showMarkers || pm.has(m.id)).map(m => markerSvg(m, { hl: pm.has(m.id) })).join(''));
     const hint = ui.hideMap ? 'Ganzer Raum sichtbar. Aufgabe antippen = Ort zeigen · abhaken = weiter mit der nächsten.'
       : !pick ? 'Alles erledigt. Bereich antippen = links nur seine Aufgaben.'
@@ -467,7 +445,7 @@ const views = {
   heute() {
     if (!mittelActive() && ui.shift === 'mittel') ui.shift = 'frueh';
     const list = db.tasks.filter(t => t.type === 'schicht' && dayOk(t) && effShift(t.shift) === ui.shift)
-      .sort((a, b) => (a.time || a.from || '99').localeCompare(b.time || b.from || '99'));
+      .sort(byTime);
     const seg = Object.entries(SHIFTS).filter(([k]) => k !== 'mittel' || mittelActive()).map(([k, s]) =>
       `<button data-shift="${k}" class="${k === ui.shift ? 'active' : ''}">${s.name} <small>${hm(s.from)}–${hm(s.to)}</small></button>`).join('');
     const rows = list.map(t => {
@@ -502,10 +480,10 @@ const views = {
     const z = db.zones.find(z => z.id === ui.zone);
     let detail = '<div class="empty">Bereich auf der Karte antippen.</div>';
     if (z) {
-      const list = db.tasks.filter(t => t.zoneId === z.id);
+      const list = zoneTasks(z).sort(byTime);
       const s = SHIFTS[effShift(z.shift)];
       detail = `<h2>${esc(z.name)} ${s ? `<span class="badge" style="background:${s.color};color:${isLight(s.color) ? '#111' : '#fff'}">${s.name}</span>` : ''}</h2>
-        ${progress(list)}<div class="list">${list.map(t => taskRow(t, 'täglich')).join('') || '<div class="empty">Keine Putzaufgaben.</div>'}</div>`;
+        ${progress(list)}<div class="list">${list.map(t => taskRow(t, whenText(t) ? `<span class="badge">${whenText(t)}</span>` : '')).join('') || '<div class="empty">Heute keine Aufgaben hier.</div>'}</div>`;
     }
     return `<div class="row ed-bar"><h2>Putzplan</h2><span class="grow"></span>${markerToggle()}${colorToggle()}</div><div class="plan"><div><div class="map-wrap">${map}</div><div class="legend">${legend}</div></div><div>${detail}</div></div>`;
   },
@@ -516,7 +494,7 @@ const views = {
       : t.type === 'intervall' ? `alle ${t.everyDays} Tage ab ${fmtDate(t.startDate)}`
       : 'Putzbereich: ' + esc(db.zones.find(z => z.id === t.zoneId)?.name || '–'));
     const ortOf = t => {
-      const n = [...new Set(taskMarkers(t).map(m => m.name)), ...(t.zoneIds || []).map(id => db.zones.find(z => z.id === id)?.name)].filter(Boolean);
+      const n = t.type === 'zone' ? [] : placeNames(t); // Putzbereich steht schon davor
       return n.length ? ' · Ort: ' + esc(n.join(', ')) : '';
     };
     const order = { schicht: 0, intervall: 1, zone: 2 };
@@ -532,7 +510,7 @@ const views = {
       <div class="admin-sec"><h3>Zusätzliche Feiertage / Wochenend-Tage</h3>
         <p class="meta">Österreichische Feiertage erkennt die App automatisch. Hier weitere Tage mit Wochenend-Zeiten (8–22 Uhr) eintragen.</p>
         <div class="row"><label>Datum <input type="date" id="holidayInput"></label><button class="btn small" data-holiday="add">Hinzufügen</button></div>
-        <div class="holidays">${db.holidays.sort().map(d => `<span class="badge">${fmtDate(d)} <button class="x" data-holiday="${d}" aria-label="Entfernen">✕</button></span>`).join('') || '<span class="meta">Keine.</span>'}</div></div>
+        <div class="holidays">${[...db.holidays].sort().map(d => `<span class="badge">${fmtDate(d)} <button class="x" data-holiday="${d}" aria-label="Entfernen">✕</button></span>`).join('') || '<span class="meta">Keine.</span>'}</div></div>
       <div class="admin-sec"><h3>Einstellungen</h3>
         <div class="row"><label>Neuer Admin-PIN <input id="newPin" inputmode="numeric"></label><button class="btn small" id="savePin">PIN ändern</button></div></div>`;
   },
@@ -551,8 +529,24 @@ function backupFile() {
 }
 function parseBackup(txt) {
   const j = JSON.parse(txt), data = j.app === 'studio-check' ? j.data : j; // alte Backups: direkt die Daten
-  if (!Array.isArray(data?.tasks) || !Array.isArray(data?.zones) || typeof data.done !== 'object') throw new Error('kein Backup');
+  if (!Array.isArray(data?.tasks) || !Array.isArray(data?.zones) || typeof data.done !== 'object' || !validData(data)) throw new Error('kein Backup');
   return { data, meta: j.app === 'studio-check' ? j : {} };
+}
+// Alles, was ungeschützt ins HTML wandert (IDs, Zahlen, Zeiten, Farben), muss diese Form haben – sonst Datei ablehnen.
+// Texte (Titel, Namen, Emojis) werden beim Anzeigen ohnehin mit esc() geschützt.
+function validData(d) {
+  const id = v => typeof v === 'string' && /^[\w-]{1,40}$/.test(v), opt = (v, ok) => v == null || ok(v);
+  const num = v => Number.isFinite(v), time = v => /^\d\d:\d\d$/.test(v), date = v => /^\d{4}-\d\d-\d\d$/.test(v);
+  const color = v => /^#[0-9a-f]{6}$/i.test(v), shift = v => opt(v, s => s === '' || s in SHIFTS);
+  const zonesOk = zs => zs.every(z => id(z.id) && shift(z.shift) && opt(z.color, color) && Array.isArray(z.rects) && z.rects.length
+    && z.rects.every(r => Array.isArray(r) && r.slice(0, 4).every(num)));
+  const markersOk = ms => (ms || []).every(m => id(m.id) && num(m.x) && num(m.y));
+  return zonesOk(d.zones) && markersOk(d.markers)
+    && d.tasks.every(t => id(t.id) && ['schicht', 'intervall', 'zone'].includes(t.type) && shift(t.shift)
+      && ['time', 'from', 'to'].every(k => opt(t[k], time)) && opt(t.startDate, date) && opt(t.everyDays, num)
+      && opt(t.zoneId, id) && (t.zoneIds || []).every(id) && (t.markerIds || []).every(id))
+    && Object.values(d.done).every(v => typeof v === 'string' && !isNaN(Date.parse(v)))
+    && (d.holidays || []).every(date) && (d.layouts || []).every(l => zonesOk(l.zones) && markersOk(l.markers));
 }
 function dataSection() {
   const imp = ui.importData, fmt = iso => iso ? new Date(iso).toLocaleString('de-AT', { dateStyle: 'medium', timeStyle: 'short' }) : 'unbekannt';
@@ -564,7 +558,7 @@ function dataSection() {
         <button class="btn small ghost" data-import="layout">Nur Layout & Punkte übernehmen</button>
         <button class="btn small ghost" data-import="cancel">Abbrechen</button></div>
       <p class="meta">„Nur Layout & Punkte“ behält eure Aufgaben und Häkchen und tauscht Karte, Punkte, gespeicherte Layouts und eigene Emojis aus.</p></div>` : '';
-  const canShare = !!navigator.canShare?.({ files: [backupFile()] });
+  const canShare = !!navigator.canShare?.({ files: [new File([''], 'x.json', { type: 'application/json' })] });
   const undo = localStorage.getItem(BACKUP_KEY) ? '<button class="btn small ghost" data-import="undo">Letzten Import rückgängig machen</button>' : '';
   return `<div class="admin-sec"><h3>Daten & Backup</h3>
     <p class="meta">Speichert <b>alles</b> in einer Datei: Aufgaben, Häkchen, Layout, Punkte, gespeicherte Layouts, Feiertage, eigene Emojis. Der Admin-PIN ist nicht enthalten.</p>
@@ -596,7 +590,7 @@ function importData(mode) {
   localStorage.setItem(BACKUP_KEY, JSON.stringify(db));
   const next = mode === 'all' ? { ...imp.data, pin: db.pin }
     : { ...db, zones: imp.data.zones, markers: imp.data.markers || [], layouts: imp.data.layouts || db.layouts,
-        customIcons: imp.data.customIcons || db.customIcons, colorBy: imp.data.colorBy || db.colorBy, mapV: 'custom' };
+        customIcons: imp.data.customIcons || db.customIcons, colorBy: imp.data.colorBy || db.colorBy };
   if (mode === 'layout') { // Putzaufgaben ohne Bereich wären verwaist
     const ids = new Set(next.zones.map(z => z.id));
     next.tasks = next.tasks.filter(t => t.type !== 'zone' || ids.has(t.zoneId));
@@ -684,7 +678,7 @@ function edPanel() {
   if (mk) return `<div class="admin-sec ed-form"><h3>Punkt</h3>
     <label>Name<input data-mf="name" value="${esc(mk.name)}"></label>
     <span class="lbl">Symbol</span><div class="icon-pick">${markerIcons().map(([i, n]) =>
-      `<button class="${i === mk.icon ? 'active' : ''}" data-ed="icon" data-val="${i}" title="${n}">${i}</button>`).join('')}</div>
+      `<button class="${i === mk.icon ? 'active' : ''}" data-ed="icon" data-val="${esc(i)}" title="${esc(n)}">${esc(i)}</button>`).join('')}</div>
     <label>Eigenes Symbol (Emoji oder Buchstabe)<input data-mf="icon" value="${esc(mk.icon || '')}" maxlength="4"></label>
     <p class="meta">Liegt in: <b>${esc(ui.draft.find(z => z.rects.some(r => inRect(mk, r)))?.name || 'keinem Bereich')}</b></p>
     <div class="row"><button class="btn small ghost danger" data-ed="delMarker">Punkt löschen</button></div></div>`;
@@ -901,7 +895,7 @@ function edAction(a, val) {
     if (lost && !confirm(`${lost} Putzaufgabe(n) gehören zu Bereichen, die es in diesem Layout nicht mehr gibt, und werden gelöscht. Trotzdem speichern?`)) return;
     const mids = new Set(ui.draftM.map(m => m.id));
     rememberIcons(ui.draftM);
-    db.zones = ui.draft; db.markers = ui.draftM; db.mapV = 'custom';
+    db.zones = ui.draft; db.markers = ui.draftM;
     db.tasks.forEach(t => { if (t.markerIds) t.markerIds = t.markerIds.filter(id => mids.has(id)); });
     db.tasks = db.tasks.filter(t => t.type !== 'zone' || ids.has(t.zoneId));
     db.tasks.forEach(t => { if (t.zoneIds) t.zoneIds = t.zoneIds.filter(id => ids.has(id)); });
@@ -1035,7 +1029,7 @@ const setPlacing = i => {
 };
 function stopPlacing() { pick.placing = null; $('#newPointBar').hidden = true; $('#newPointBtn').hidden = false; $('#newPointName').value = ''; $('#newPointEmoji').value = ''; }
 $('#newPointBtn').onclick = () => {
-  $('#newPointIcons').innerHTML = markerIcons().map(([i, n]) => `<button type="button" data-picon="${i}" title="${esc(n)}">${esc(i)}</button>`).join('');
+  $('#newPointIcons').innerHTML = markerIcons().map(([i, n]) => `<button type="button" data-picon="${esc(i)}" title="${esc(n)}">${esc(i)}</button>`).join('');
   $('#newPointBar').hidden = false; $('#newPointBtn').hidden = true; setPlacing(MARKER_ICONS[0][0]);
 };
 $('#newPointEmoji').addEventListener('input', e => { const v = e.target.value.trim(); if (v) { pick.placing = v; $('#newPointIcons').querySelectorAll('button').forEach(b => b.classList.remove('active')); drawPick(); } });
