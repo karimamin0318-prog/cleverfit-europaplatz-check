@@ -902,7 +902,10 @@ function edAction(a, val) {
 
 function render() {
   document.body.classList.toggle('admin', ui.admin);
-  $('#adminBtn').textContent = ui.admin ? 'Abmelden' : 'Admin';
+  $('#adminBtn').textContent = ui.admin ? 'Admin beenden' : 'Admin';
+  // Wer ist angemeldet? Gerät abmelden nur im Admin-Modus, damit an der Theke niemand aus Versehen abmeldet
+  $('#account').innerHTML = cloud.email ? `<span title="Angemeldet">👤 ${esc(cloud.email)}</span>`
+    + (ui.admin ? ' <button class="btn small ghost" id="topLogout">Gerät abmelden</button>' : '') : '';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === ui.tab));
   $('#view').classList.toggle('full', ui.tab === 'layout');
   $('#view').innerHTML = views[ui.tab]();
@@ -932,9 +935,8 @@ $('#view').addEventListener('click', e => {
   else if (d.zone) { ui.zone = ui.tab === 'dashboard' && ui.zone === d.zone ? null : d.zone; render(); } // Dashboard: nochmal tippen = schließen
   else if (d.edit !== undefined) openTask(d.edit);
   else if (d.del && confirm('Aufgabe wirklich löschen?')) { db.tasks = db.tasks.filter(t => t.id !== d.del); save(); render(); }
-  else if (el.id === 'deviceLogout') {
-    if (confirm('Dieses Gerät abmelden? Danach muss sich hier jemand neu anmelden (z.B. mit dem Theke-Konto).')) sb.auth.signOut().then(() => location.reload());
-  } else if (d.export) exportData(d.export);
+  else if (el.id === 'deviceLogout') deviceLogout();
+  else if (d.export) exportData(d.export);
   else if (d.import) importData(d.import);
 });
 $('#view').addEventListener('keydown', e => {
@@ -956,6 +958,13 @@ $('#view').addEventListener('change', e => {
       .catch(() => alert('Datei ist kein gültiges Studio-Check-Backup.'));
   }
 });
+
+// Gerät abmelden (z.B. um am Theken-PC das Theke-Konto anzumelden)
+function deviceLogout() {
+  if (!confirm('Dieses Gerät abmelden? Danach muss sich hier jemand neu anmelden (z.B. mit dem Theke-Konto).')) return;
+  Promise.all([sb.auth.signOut(), sbAdmin.auth.signOut()]).finally(() => location.reload());
+}
+$('#account').onclick = e => { if (e.target.id === 'topLogout') deviceLogout(); };
 
 // Admin-Login
 $('#adminBtn').onclick = () => {
@@ -1161,6 +1170,7 @@ function refresh() {
 
 async function afterLogin(user) {
   $('#loginScreen').hidden = true;
+  cloud.email = user.email;
   cloud.isAdmin = await isAdminEmail(sb, user.email);
   cloud.admin = cloud.isAdmin ? sb : null;
   try { await cloudLoad(); } catch (e) { cloudBar('⚠ Keine Verbindung zur Datenbank – zeige den letzten Stand dieses Geräts.'); }

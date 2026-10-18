@@ -246,3 +246,6 @@ main.full .ed-bar { margin-bottom: 8px; }
 .login-card input { display: block; width: 100%; margin-top: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
 .login-card .btn { width: 100%; margin-top: 8px; padding: 12px; }
 .cloud-bar { background: #fff3cd; border-bottom: 2px solid #f2b705; padding: 8px 20px; font-size: 14px; font-weight: 600; }
+.account { color: #bbb; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.account .btn { color: #fff; }
+@media (max-width: 600px) { .account span { display: none; } }
