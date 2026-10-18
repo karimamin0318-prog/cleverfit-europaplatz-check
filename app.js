@@ -238,7 +238,7 @@ function seed() {
   ];
   const tasks = [...chefTasks(), { id: uid(), type: 'intervall', title: 'Natural Power Serum Deep Clean', icon: '🧽', markerRules: ['bar'], everyDays: 14, startDate: today() }];
   zones.forEach(z => z.color = AREA_COLORS[z.id]);
-  return { pin: '1234', colorBy: 'schicht', tasks, zones, done: {} };
+  return { colorBy: 'schicht', tasks, zones, done: {} };
 }
 
 let db;
@@ -251,24 +251,19 @@ let db;
   db ||= seed();
 }
 function save() {
-  try { localStorage.setItem(KEY, JSON.stringify(db)); }
-  catch { alert('Speichern fehlgeschlagen – der Browser-Speicher ist voll oder gesperrt. Bitte ein Backup herunterladen und den Admin informieren.'); }
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} // nur Zwischenspeicher; die echten Daten liegen in Supabase
+  sync();
 }
+function normalize() {
 db.colorBy ??= 'schicht';
 db.mittelDays ??= {}; // Wochenende/Feiertag: Tage mit Mittelschicht { '2026-10-18': true }
 db.holidays ??= []; // zusätzliche Feiertage/Sonderöffnungstage (YYYY-MM-DD)
 db.markers ??= []; // Punkte: Mülltonne, Wasserspender … ({ id, name, icon, x, y })
 db.customIcons ??= []; // eigene Punkt-Emojis [[icon, name]]
 db.layouts ??= []; // gespeicherte Layouts: { id, studio, name, note, savedAt, zones, markers }
-// Speicher klein halten: Häkchen älter als 60 Tage und von gelöschten Aufgaben weg (Intervall-Häkchen bleiben für „zuletzt erledigt“)
-{
-  const byId = new Map(db.tasks.map(t => [t.id, t])), cutoff = Date.now() - 60 * 864e5;
-  for (const [k, v] of Object.entries(db.done)) {
-    const t = byId.get(k.split('|')[0]);
-    if (!t || t.type !== 'intervall' && Date.parse(v) < cutoff) delete db.done[k];
-  }
+delete db.pin; // früher: Admin-PIN, jetzt Admin-Konten
 }
-save();
+normalize();
 
 const ui = { tab: 'dashboard', admin: false, shift: currentShift(), zone: null, pick: null, doneOpen: false, showMarkers: false };
 const $ = s => document.querySelector(s);
@@ -512,7 +507,8 @@ const views = {
         <div class="row"><label>Datum <input type="date" id="holidayInput"></label><button class="btn small" data-holiday="add">Hinzufügen</button></div>
         <div class="holidays">${[...db.holidays].sort().map(d => `<span class="badge">${fmtDate(d)} <button class="x" data-holiday="${d}" aria-label="Entfernen">✕</button></span>`).join('') || '<span class="meta">Keine.</span>'}</div></div>
       <div class="admin-sec"><h3>Einstellungen</h3>
-        <div class="row"><label>Neuer Admin-PIN <input id="newPin" inputmode="numeric"></label><button class="btn small" id="savePin">PIN ändern</button></div></div>`;
+        <p class="meta">Admins und Passwörter verwaltest du im Supabase-Dashboard (Authentication → Users; Admin-Liste: Tabelle „admins“).</p>
+        <div class="row"><button class="btn small ghost danger" id="deviceLogout">Dieses Gerät abmelden</button></div></div>`;
   },
 };
 
@@ -522,7 +518,7 @@ const BACKUP_KEY = KEY + '-vor-import'; // Stand vor dem letzten Import (für �
 const counts = d => ({ Aufgaben: d.tasks.length, Bereiche: d.zones.length, Punkte: d.markers?.length || 0,
   'gespeicherte Layouts': d.layouts?.length || 0, Häkchen: Object.keys(d.done || {}).length });
 function backupFile() {
-  const { pin, ...data } = db;
+  const { pin, ...data } = db; // pin: nur in alten Daten
   const json = JSON.stringify({ app: 'studio-check', version: 1, exportedAt: new Date().toISOString(), studio: ui.libStudio, data }, null, 2);
   const stamp = new Date().toLocaleString('sv').slice(0, 16).replace(/[ :]/g, '-');
   return new File([json], `studio-check-${stamp}.json`, { type: 'application/json' });
@@ -561,7 +557,7 @@ function dataSection() {
   const canShare = !!navigator.canShare?.({ files: [new File([''], 'x.json', { type: 'application/json' })] });
   const undo = localStorage.getItem(BACKUP_KEY) ? '<button class="btn small ghost" data-import="undo">Letzten Import rückgängig machen</button>' : '';
   return `<div class="admin-sec"><h3>Daten & Backup</h3>
-    <p class="meta">Speichert <b>alles</b> in einer Datei: Aufgaben, Häkchen, Layout, Punkte, gespeicherte Layouts, Feiertage, eigene Emojis. Der Admin-PIN ist nicht enthalten.</p>
+    <p class="meta">Speichert <b>alles</b> in einer Datei: Aufgaben, Häkchen, Layout, Punkte, gespeicherte Layouts, Feiertage, eigene Emojis. Passwörter sind nicht enthalten.</p>
     <div class="data-grid">
       <div><h4>Exportieren</h4><p class="meta">Als Backup am PC/in der Cloud ablegen oder an ein anderes Gerät schicken.</p>
         <div class="row"><button class="btn small" data-export="download">⬇ Datei herunterladen</button>
@@ -581,22 +577,21 @@ function importData(mode) {
   const imp = ui.importData;
   if (mode === 'undo') {
     if (!confirm('Stand vor dem letzten Import wiederherstellen?')) return;
-    localStorage.setItem(KEY, localStorage.getItem(BACKUP_KEY)); localStorage.removeItem(BACKUP_KEY);
-    return location.reload();
+    db = JSON.parse(localStorage.getItem(BACKUP_KEY)); localStorage.removeItem(BACKUP_KEY);
+    normalize(); save(); return render();
   }
   ui.importData = null;
   if (mode === 'cancel' || !imp) return render();
   if (!confirm(mode === 'all' ? 'Alle Daten auf diesem Gerät durch die Datei ersetzen?' : 'Layout und Punkte durch die aus der Datei ersetzen?')) return render();
   localStorage.setItem(BACKUP_KEY, JSON.stringify(db));
-  const next = mode === 'all' ? { ...imp.data, pin: db.pin }
+  const next = mode === 'all' ? { ...imp.data, colorBy: db.colorBy }
     : { ...db, zones: imp.data.zones, markers: imp.data.markers || [], layouts: imp.data.layouts || db.layouts,
         customIcons: imp.data.customIcons || db.customIcons, colorBy: imp.data.colorBy || db.colorBy };
   if (mode === 'layout') { // Putzaufgaben ohne Bereich wären verwaist
     const ids = new Set(next.zones.map(z => z.id));
     next.tasks = next.tasks.filter(t => t.type !== 'zone' || ids.has(t.zoneId));
   }
-  localStorage.setItem(KEY, JSON.stringify(next));
-  location.reload(); // lädt neu, damit Umstellungen älterer Backups automatisch laufen
+  db = next; normalize(); save(); render(); // speichert in die Datenbank – alle Geräte sehen es sofort
 }
 
 // --- Layout-Editor (nur Admin). Arbeitet auf einer Kopie (ui.draft), erst „Speichern“ übernimmt sie. ---
@@ -918,14 +913,14 @@ $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) { u
 
 $('#view').addEventListener('click', e => {
   if (e.target.closest('#edSvg')) return; // Editor-Karte läuft über Pointer-Events
-  const el = e.target.closest('[data-toggle],[data-shift],[data-zone],[data-edit],[data-del],[data-ed],[data-tab],[data-colorby],[data-pick],[data-markers],[data-mittel],[data-holiday],[data-export],[data-import],#savePin');
+  const el = e.target.closest('[data-toggle],[data-shift],[data-zone],[data-edit],[data-del],[data-ed],[data-tab],[data-colorby],[data-pick],[data-markers],[data-mittel],[data-holiday],[data-export],[data-import],#deviceLogout');
   if (!el) return;
   const d = el.dataset;
   if (d.ed) edAction(d.ed, d.val);
   else if (d.colorby) { db.colorBy = d.colorby; save(); render(); }
   else if (d.tab) { ui.tab = d.tab; render(); }
   else if (d.toggle) toggle(d.toggle);
-  else if (d.mittel !== undefined) { db.mittelDays[today()] = !mittelActive(); ui.shift = currentShift(); save(); render(); }
+  else if (d.mittel !== undefined) { if (mittelActive()) delete db.mittelDays[today()]; else db.mittelDays[today()] = new Date().toISOString(); ui.shift = currentShift(); save(); render(); }
   else if (d.holiday) {
     if (d.holiday === 'add') { const v = $('#holidayInput').value; if (!v) return; if (!db.holidays.includes(v)) db.holidays.push(v); }
     else db.holidays = db.holidays.filter(x => x !== d.holiday);
@@ -937,10 +932,8 @@ $('#view').addEventListener('click', e => {
   else if (d.zone) { ui.zone = ui.tab === 'dashboard' && ui.zone === d.zone ? null : d.zone; render(); } // Dashboard: nochmal tippen = schließen
   else if (d.edit !== undefined) openTask(d.edit);
   else if (d.del && confirm('Aufgabe wirklich löschen?')) { db.tasks = db.tasks.filter(t => t.id !== d.del); save(); render(); }
-  else if (el.id === 'savePin') {
-    const p = $('#newPin').value.trim();
-    if (p.length < 4) return alert('PIN muss mindestens 4 Zeichen haben.');
-    db.pin = p; save(); alert('PIN geändert.'); render();
+  else if (el.id === 'deviceLogout') {
+    if (confirm('Dieses Gerät abmelden? Danach muss sich hier jemand neu anmelden (z.B. mit dem Theke-Konto).')) sb.auth.signOut().then(() => location.reload());
   } else if (d.export) exportData(d.export);
   else if (d.import) importData(d.import);
 });
@@ -968,14 +961,21 @@ $('#view').addEventListener('change', e => {
 $('#adminBtn').onclick = () => {
   if (ui.admin) {
     ui.admin = false; ui.draft = ui.draftM = ui.sel = null;
+    if (cloud.admin === sbAdmin) { sbAdmin.auth.signOut(); cloud.admin = null; }
     if (ui.tab === 'admin' || ui.tab === 'layout') ui.tab = 'dashboard';
     return render();
   }
-  $('#pinInput').value = ''; $('#pinErr').textContent = ''; $('#pinDlg').showModal();
+  if (cloud.isAdmin) { ui.admin = true; ui.tab = 'admin'; return render(); } // Gerät ist schon mit Admin-Konto angemeldet
+  $('#adminEmail').value = ''; $('#pinInput').value = ''; $('#pinErr').textContent = ''; $('#pinDlg').showModal();
 };
-$('#pinForm').onsubmit = e => {
+$('#pinForm').onsubmit = async e => {
   if (e.submitter?.value === 'cancel') return;
-  if ($('#pinInput').value !== db.pin) { e.preventDefault(); $('#pinErr').textContent = 'Falscher PIN'; return; }
+  e.preventDefault();
+  const email = $('#adminEmail').value.trim();
+  const { error } = await sbAdmin.auth.signInWithPassword({ email, password: $('#pinInput').value });
+  if (error) return $('#pinErr').textContent = 'E-Mail oder Passwort falsch.';
+  if (!await isAdminEmail(sbAdmin, email)) { await sbAdmin.auth.signOut(); return $('#pinErr').textContent = 'Dieses Konto ist kein Admin.'; }
+  cloud.admin = sbAdmin; $('#pinDlg').close();
   ui.admin = true; ui.tab = 'admin'; render();
 };
 
@@ -1085,11 +1085,107 @@ form.onsubmit = e => {
   const fixed = [...pick.markers].filter(id => !rules.some(k => MARKER_RULES[k].match(db.markers.find(m => m.id === id))));
   if (fixed.length) t.markerIds = fixed;
   // Intervall/Startdatum geändert -> Periodenschlüssel verschieben sich, alte Häkchen gelten nicht mehr; ist gewollt.
-  if (editing) db.tasks[db.tasks.indexOf(editing)] = t; else db.tasks.push(t);
+  const i = db.tasks.findIndex(x => x.id === t.id);
+  if (i >= 0) db.tasks[i] = t; else db.tasks.push(t);
   save(); render();
 };
 
-// Uhr + Ansicht minütlich auffrischen (überfällig-Status, Tageswechsel)
+// --- Gemeinsame Daten über Supabase (Theken-PC, Chef zu Hause …) ---
+// Aufgaben/Layout/Punkte = ein Dokument „studio“ (nur Admins schreiben), Häkchen = einzelne Zeilen „done“ (alle Angemeldeten).
+// Der Browser-Speicher bleibt als Zwischenspeicher, damit die App sofort etwas zeigt.
+const SB_URL = 'https://lbnmpuatinalptvoqpyp.supabase.co', SB_KEY = 'sb_publishable_MqttaU1uP5kVuzPahOowJw_EMik8yID'; // öffentlich gedacht, Schutz über RLS
+const STUDIO_ID = 'europaplatz';
+const sb = supabase.createClient(SB_URL, SB_KEY); // Konto dieses Geräts (Theke oder Admin zu Hause), bleibt angemeldet
+// Admin an der Theke: zweite Anmeldung nur im Arbeitsspeicher – das Theke-Konto bleibt angemeldet
+const sbAdmin = supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false, storageKey: 'sb-admin' } });
+const cloud = { ready: false, isAdmin: false, admin: null, config: '', done: {} }; // admin = Verbindung mit Schreibrecht für Aufgaben
+const CONFIG_KEYS = ['tasks', 'zones', 'markers', 'layouts', 'customIcons', 'holidays'];
+const configJson = () => JSON.stringify(Object.fromEntries(CONFIG_KEYS.map(k => [k, db[k]])));
+// Häkchen + „Mittelschicht heute“ als Zeilen der Tabelle done
+const doneRows = () => ({ ...db.done, ...Object.fromEntries(Object.entries(db.mittelDays).filter(([, v]) => v)
+  .map(([d, v]) => ['mittel|' + d, typeof v === 'string' ? v : new Date(0).toISOString()])) });
+const chunks = (a, n = 200) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
+
+function cloudBar(msg) { const b = $('#cloudBar'); b.hidden = !msg; b.textContent = msg; }
+const isAdminEmail = async (client, email) =>
+  !!(await client.from('admins').select('email').eq('email', email.toLowerCase()).maybeSingle()).data;
+
+let syncing = Promise.resolve();
+const sync = () => { syncing = syncing.then(pushChanges).catch(e => cloudBar('⚠ Nicht gespeichert – keine Verbindung zur Datenbank. Wird beim nächsten Speichern erneut versucht. (' + (e.message || e) + ')')); };
+async function pushChanges() {
+  if (!cloud.ready) return;
+  const cfg = configJson();
+  if (cfg !== cloud.config && cloud.admin) { // Nicht-Admins ändern keine Aufgaben; Ansichts-Einstellungen bleiben lokal
+    const { error } = await cloud.admin.from('studio').upsert({ id: STUDIO_ID, data: JSON.parse(cfg), updated_at: new Date().toISOString() });
+    if (error) throw error;
+    cloud.config = cfg;
+  }
+  const now = doneRows();
+  const add = Object.entries(now).filter(([k, v]) => cloud.done[k] !== v), del = Object.keys(cloud.done).filter(k => !(k in now));
+  for (const part of chunks(add)) { const { error } = await sb.from('done').upsert(part.map(([key, done_at]) => ({ key, done_at }))); if (error) throw error; }
+  for (const part of chunks(del)) { const { error } = await sb.from('done').delete().in('key', part); if (error) throw error; }
+  cloud.done = now;
+  cloudBar('');
+}
+// Lädt Aufgaben + Häkchen der letzten 2 Tage (+ Intervall-Häkchen). Ältere Häkchen bleiben in der Datenbank, werden aber nicht gebraucht.
+async function cloudLoad() {
+  const since = new Date(Date.now() - 2 * 864e5).toISOString();
+  const [st, recent, intervals] = await Promise.all([
+    sb.from('studio').select('data').eq('id', STUDIO_ID).maybeSingle(),
+    sb.from('done').select('key,done_at').gte('done_at', since).limit(5000),
+    sb.from('done').select('key,done_at').like('key', '%|p%').limit(5000),
+  ]);
+  const err = st.error || recent.error || intervals.error;
+  if (err) throw err;
+  if (st.data) Object.assign(db, st.data.data);
+  else if (cloud.admin) cloudBar('Noch keine Daten in der Datenbank – sie werden jetzt von diesem Gerät hochgeladen.');
+  else return cloudBar('Noch keine Aufgaben in der Datenbank. Ein Admin muss sich einmal anmelden.');
+  db.done = {}; db.mittelDays = {};
+  for (const r of [...recent.data, ...intervals.data])
+    if (r.key.startsWith('mittel|')) db.mittelDays[r.key.slice(7)] = r.done_at; else db.done[r.key] = r.done_at;
+  normalize();
+  cloud.config = st.data ? configJson() : ''; // leer → erster Speichervorgang lädt alles hoch
+  cloud.done = doneRows();
+  localStorage.setItem(KEY, JSON.stringify(db));
+}
+// Änderungen anderer Geräte übernehmen (Live + jede Minute als Sicherheitsnetz)
+const quiet = () => !document.querySelector('dialog[open]') && ui.tab !== 'admin' && ui.tab !== 'layout' && !drag;
+let refreshTimer;
+function refresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(async () => {
+    await syncing;
+    try { await cloudLoad(); if (quiet()) render(); } catch (e) { cloudBar('⚠ Keine Verbindung zur Datenbank – zeige den letzten Stand.'); }
+  }, 300);
+}
+
+async function afterLogin(user) {
+  $('#loginScreen').hidden = true;
+  cloud.isAdmin = await isAdminEmail(sb, user.email);
+  cloud.admin = cloud.isAdmin ? sb : null;
+  try { await cloudLoad(); } catch (e) { cloudBar('⚠ Keine Verbindung zur Datenbank – zeige den letzten Stand dieses Geräts.'); }
+  cloud.ready = true;
+  sync(); // falls die Datenbank noch leer war: hochladen
+  sb.channel('studio-check')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'studio' }, refresh)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'done' }, refresh)
+    .subscribe();
+  render();
+}
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = e.target.elements;
+  $('#loginErr').textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email: f.email.value.trim(), password: f.password.value });
+  if (error) return $('#loginErr').textContent = 'Anmeldung fehlgeschlagen – E-Mail oder Passwort falsch.';
+  afterLogin(data.user);
+};
+async function start() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) afterLogin(data.session.user); else $('#loginScreen').hidden = false;
+}
+
+// Uhr + Ansicht minütlich auffrischen (überfällig-Status, Tageswechsel) und Stand aus der Datenbank holen
 const tick = () => { $('#clock').textContent = new Date().toLocaleString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
-setInterval(() => { tick(); if (!document.querySelector('dialog[open]') && ui.tab !== 'admin' && ui.tab !== 'layout') render(); }, 60000);
-tick(); render();
+setInterval(() => { tick(); if (cloud.ready) refresh(); else if (quiet()) render(); }, 60000);
+tick(); render(); start();

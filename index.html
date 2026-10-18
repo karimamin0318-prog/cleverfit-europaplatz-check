@@ -21,6 +21,7 @@
       <button id="adminBtn" class="btn ghost">Admin</button>
     </div>
   </header>
+  <div id="cloudBar" class="cloud-bar" hidden></div>
 
   <nav class="tabs" id="tabs">
     <button data-tab="dashboard" class="active">Dashboard</button>
@@ -33,10 +34,24 @@
 
   <main id="view"></main>
 
+  <div id="loginScreen" class="login-screen" hidden>
+    <form id="loginForm" class="login-card">
+      <div class="logo">clever<b>fit</b></div>
+      <h3>Studio Check anmelden</h3>
+      <p class="meta">Einmal pro Gerät anmelden – danach bleibt es angemeldet.</p>
+      <label>E-Mail<input name="email" type="email" autocomplete="username" required></label>
+      <label>Passwort<input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="err" id="loginErr"></p>
+      <button class="btn">Anmelden</button>
+    </form>
+  </div>
+
   <dialog id="pinDlg">
     <form method="dialog" id="pinForm">
       <h3>Admin-Login</h3>
-      <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" required>
+      <p class="meta">Mit deinem Admin-Konto. Das Theke-Konto bleibt angemeldet.</p>
+      <label>E-Mail<input id="adminEmail" type="email" autocomplete="off" required></label>
+      <label>Passwort<input id="pinInput" type="password" autocomplete="off" required></label>
       <p id="pinErr" class="err"></p>
       <div class="row end"><button value="cancel" formnovalidate class="btn ghost">Abbrechen</button><button class="btn">Login</button></div>
     </form>
@@ -99,6 +114,7 @@
     </form>
   </dialog>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

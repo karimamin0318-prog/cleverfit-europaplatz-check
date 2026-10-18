@@ -235,3 +235,14 @@ main.full .ed-bar { margin-bottom: 8px; }
 .map .zone.hl { animation: hlPulse 1.6s ease-in-out infinite; }
 @keyframes hlPulse { 50% { filter: url(#hlOutline) brightness(1.15); } }
 .hint .ticon { width: 24px; height: 24px; font-size: 14px; vertical-align: -6px; margin-right: 6px; }
+
+/* Anmeldung + Verbindungshinweis */
+.login-screen { position: fixed; inset: 0; z-index: 50; background: var(--black); display: grid; place-items: center; padding: 16px; }
+.login-screen[hidden] { display: none; }
+.login-card { background: #fff; border-radius: 12px; padding: 28px; width: min(380px, 100%); }
+.login-card .logo { font-size: 30px; margin-bottom: 8px; }
+.login-card h3 { margin: 4px 0 6px; }
+.login-card label { display: block; font-size: 14px; font-weight: 600; margin-top: 12px; }
+.login-card input { display: block; width: 100%; margin-top: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+.login-card .btn { width: 100%; margin-top: 8px; padding: 12px; }
+.cloud-bar { background: #fff3cd; border-bottom: 2px solid #f2b705; padding: 8px 20px; font-size: 14px; font-weight: 600; }
