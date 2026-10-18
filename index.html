@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio Check – Europaplatz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">clever<b>fit</b></span><span class="loc">Europaplatz · Studio Check</span></div>
+    <div class="top-right">
+      <span id="clock" class="clock"></span>
+      <button id="adminBtn" class="btn ghost">Admin</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="dashboard" class="active">Dashboard</button>
+    <button data-tab="heute">Schichten</button>
+    <button data-tab="intervall">Intervall</button>
+    <button data-tab="putzplan">Putzplan</button>
+    <button data-tab="admin" class="admin-only">Verwaltung</button>
+    <button data-tab="layout" class="admin-only">Layout</button>
+  </nav>
+
+  <main id="view"></main>
+
+  <dialog id="pinDlg">
+    <form method="dialog" id="pinForm">
+      <h3>Admin-Login</h3>
+      <input id="pinInput" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" required>
+      <p id="pinErr" class="err"></p>
+      <div class="row end"><button value="cancel" formnovalidate class="btn ghost">Abbrechen</button><button class="btn">Login</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="taskDlg">
+    <form method="dialog" id="taskForm">
+      <h3 id="taskDlgTitle">Aufgabe</h3>
+      <label>Titel<input name="title" required></label>
+      <div class="icon-field">
+        <span class="lbl">Icon <small id="taskIconName" class="meta"></small></span>
+        <div class="icon-pick" id="taskIcons"></div>
+        <input type="hidden" name="icon">
+      </div>
+      <label>Art
+        <select name="type">
+          <option value="schicht">Schicht-Aufgabe (täglich)</option>
+          <option value="intervall">Intervall (alle X Tage)</option>
+          <option value="zone">Putzbereich (täglich)</option>
+        </select>
+      </label>
+      <label id="daysField">Gilt an
+        <select name="days">
+          <option value="">Jeden Tag</option>
+          <option value="wt">Werktags (Mo–Fr)</option>
+          <option value="we">Wochenende &amp; Feiertage</option>
+        </select>
+      </label>
+      <div data-for="schicht">
+        <label>Schicht<select name="shift"></select></label>
+        <div class="row">
+          <label>Uhrzeit<input type="time" name="time"></label>
+          <span class="or">oder</span>
+          <label>von<input type="time" name="from"></label>
+          <label>bis<input type="time" name="to"></label>
+        </div>
+        <label class="chk"><input type="checkbox" name="hourly"> Stündlich wiederholen (im Zeitfenster, sonst während der ganzen Schicht)</label>
+      </div>
+      <div data-for="intervall" class="row">
+        <label>Alle … Tage<input type="number" name="everyDays" min="1" value="14"></label>
+        <label>Startdatum<input type="date" name="startDate"></label>
+      </div>
+      <div data-for="zone">
+        <label>Bereich<select name="zoneId"></select></label>
+      </div>
+      <div id="ortField">
+        <div class="row ort-head"><span class="lbl" id="ortLabel">Ort auf der Karte (optional)</span><span class="grow"></span>
+          <button type="button" class="btn small ghost" id="newPointBtn">+ Neuer Punkt</button></div>
+        <div id="newPointBar" hidden>
+          <div class="icon-pick" id="newPointIcons"></div>
+          <div class="row"><label>Name<input id="newPointName"></label>
+            <label class="emoji-in">Eigenes Emoji<input id="newPointEmoji" maxlength="4" placeholder="z.B. 🚿"></label>
+            <button type="button" class="btn small ghost" id="newPointCancel">Abbrechen</button></div>
+          <p class="meta"><b>Jetzt auf die Karte tippen</b>, wo der Punkt hin soll.</p>
+        </div>
+        <div class="map-wrap pick-map" id="ortMap"></div>
+        <p class="meta" id="ortSummary"></p>
+      </div>
+      <div class="row end"><button value="cancel" formnovalidate class="btn ghost">Abbrechen</button><button class="btn">Speichern</button></div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

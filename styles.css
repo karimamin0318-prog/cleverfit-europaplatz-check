@@ -1,0 +1,237 @@
+:root {
+  --red: #e2001a;
+  --black: #111;
+  --bg: #f3f3f3;
+  --card: #fff;
+  --line: #e2e2e2;
+  --muted: #777;
+  --ok: #1a9c4a;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font-family: Barlow, system-ui, sans-serif; background: var(--bg); color: var(--black); }
+button, input, select { font: inherit; }
+
+.top { background: var(--black); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; gap: 12px; }
+.brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.logo { font-weight: 800; font-size: 26px; letter-spacing: -.5px; text-transform: lowercase; }
+.logo b { color: var(--red); }
+.loc { color: #bbb; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+.top-right { display: flex; align-items: center; gap: 14px; }
+.clock { color: #bbb; font-variant-numeric: tabular-nums; }
+
+.tabs { display: flex; background: #fff; border-bottom: 1px solid var(--line); padding: 0 12px; overflow-x: auto; }
+.tabs button { background: none; border: 0; padding: 14px 16px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; }
+.tabs button.active { color: var(--black); border-color: var(--red); }
+body:not(.admin) .admin-only { display: none; }
+
+main { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; }
+h2 { font-size: 22px; text-transform: uppercase; margin: 8px 0 14px; }
+h3 { margin: 0 0 14px; text-transform: uppercase; }
+
+.btn { background: var(--red); color: #fff; border: 0; border-radius: 6px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+.btn.ghost { background: transparent; color: inherit; border: 1px solid currentColor; }
+.btn.small { padding: 6px 10px; font-size: 14px; }
+
+.seg { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.seg button { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 10px 16px; font-weight: 700; cursor: pointer; }
+.seg.small { margin: 0; }
+.seg.small button { padding: 6px 12px; font-size: 14px; }
+.seg button.active { background: var(--black); color: #fff; border-color: var(--black); }
+
+.progress { height: 6px; background: var(--line); border-radius: 3px; margin-bottom: 16px; overflow: hidden; }
+.progress div { height: 100%; background: var(--ok); transition: width .3s; }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+.task { display: flex; align-items: center; gap: 14px; background: var(--card); border-radius: 8px; padding: 14px 16px; border-left: 4px solid transparent; cursor: pointer; }
+.task.overdue { border-left-color: var(--red); }
+.task.done { opacity: .55; }
+.task.done .title { text-decoration: line-through; }
+.check { flex: none; width: 30px; height: 30px; border: 2px solid #bbb; border-radius: 6px; display: grid; place-items: center; color: #fff; font-weight: 800; }
+.task.done .check { background: var(--ok); border-color: var(--ok); }
+.task .body { flex: 1; min-width: 0; }
+.title { font-weight: 600; font-size: 17px; }
+.meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
+.badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: var(--bg); margin-right: 6px; }
+.badge.red { background: var(--red); color: #fff; }
+.badge.green { background: var(--ok); color: #fff; }
+.empty { color: var(--muted); padding: 20px; text-align: center; background: #fff; border-radius: 8px; }
+
+.plan { display: grid; gap: 20px; }
+@media (min-width: 800px) { .plan { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); align-items: start; } .plan > div:last-child h2 { margin-top: 0; } }
+.map-wrap { background: #fff; border-radius: 8px; padding: 12px; }
+.map { width: 100%; height: auto; display: block; }
+.map .floor { fill: #e9e9e9; }
+.map .zone { cursor: pointer; }
+.map .zone rect { fill: var(--fill); }
+.map .zone:hover { filter: brightness(1.08); }
+.map .zone.sel { filter: drop-shadow(0 0 2px #111) drop-shadow(0 0 1px #111); }
+.map text { font-weight: 700; dominant-baseline: central; text-anchor: middle; fill: var(--txt); pointer-events: none; }
+
+.ed-bar { align-items: center; margin-bottom: 12px; }
+.ed-bar h2 { margin: 0 8px 0 0; }
+.ed-bar .grow { flex: 1; }
+.chk { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.chk select { padding: 4px; border: 1px solid var(--line); border-radius: 6px; }
+.editor { touch-action: none; user-select: none; -webkit-user-select: none; }
+.editor .zone { cursor: move; }
+.editor .zone.sel { filter: none; }
+.editor rect.cur { stroke: #111; stroke-width: 1.5; stroke-dasharray: 5 3; }
+.handle { fill: #fff; stroke: #111; stroke-width: 1.5; }
+.h-nw, .h-se { cursor: nwse-resize; } .h-ne, .h-sw { cursor: nesw-resize; }
+.h-n, .h-s { cursor: ns-resize; } .h-e, .h-w { cursor: ew-resize; }
+.ed-form label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.ed-form input, .ed-form select { display: block; width: 100%; margin-top: 4px; }
+.ed-form input[type=color] { height: 38px; padding: 2px; }
+.ed-form .row { margin-bottom: 10px; }
+.ed-form .row > label { min-width: 60px; margin: 0; }
+.ed-form h3 { margin: 14px 0 8px; font-size: 15px; }
+.ed-help ul { margin: 0; padding-left: 18px; line-height: 1.7; }
+.btn.danger { color: var(--red); }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; font-size: 14px; }
+.legend .done-key::before { display: none; }
+.legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+
+.admin-sec { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.admin-sec table { width: 100%; border-collapse: collapse; }
+.admin-sec td { padding: 8px 4px; border-top: 1px solid var(--line); vertical-align: middle; }
+.admin-sec td:last-child { text-align: right; white-space: nowrap; }
+.admin-sec input, .admin-sec select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+
+dialog { border: 0; border-radius: 10px; padding: 22px; width: min(460px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0,0,0,.5); }
+dialog label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+dialog input, dialog select { display: block; width: 100%; margin-top: 4px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.row > label { flex: 1; min-width: 90px; }
+.row.end { justify-content: flex-end; margin-top: 8px; }
+.or { padding-bottom: 22px; color: var(--muted); font-size: 14px; }
+.err { color: var(--red); min-height: 1em; margin: 6px 0 0; }
+
+@media (max-width: 600px) {
+  .loc { display: none; }
+  .clock { display: none; }
+  main { padding: 16px 16px 60px; }
+}
+
+/* Dashboard */
+.dash-grid { display: grid; gap: 24px; }
+@media (min-width: 900px) { .dash-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; } .dash-map { position: sticky; top: 12px; } }
+.dash-grid h2 { margin-top: 0; }
+.task.dash { border-left: 6px solid var(--stripe); cursor: pointer; padding: 12px 14px; }
+.task.dash.picked { box-shadow: 0 0 0 2px var(--black); }
+.task.dash.done { opacity: .6; }
+button.check { background: #fff; padding: 0; cursor: pointer; font: inherit; font-weight: 800; }
+button.check:hover { border-color: var(--ok); }
+.tag { display: inline-block; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; padding: 2px 8px; border-radius: 4px; margin-right: 6px; background: color-mix(in srgb, var(--c) 18%, #fff); color: #222; border-left: 4px solid var(--c); }
+.tag.imp { background: var(--red); color: #fff; border: 0; }
+.place { font-size: 13px; color: var(--muted); }
+.place::before { content: '◉\00a0'; color: var(--black); }
+.done-box { margin-top: 18px; }
+.done-box summary { cursor: pointer; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; padding: 10px 4px; color: var(--muted); }
+.done-box .list { margin-top: 6px; }
+.hint { margin: 8px 2px 0; }
+.map.focus .zone:not(.hl) { opacity: .3; }
+.map .zone.hl, .map .zone.hl:hover { filter: url(#hlOutline); }
+
+/* Dashboard: Bereichs-Panel rechts neben der Karte */
+main.wide { max-width: 1560px; }
+.zone-panel .tag { margin-bottom: 10px; }
+.zone-panel .meta { margin-left: 4px; }
+.zone-panel .progress { margin-top: 10px; }
+.zone-panel h3.sub { font-size: 14px; color: var(--muted); margin: 16px 0 8px; }
+@media (min-width: 1200px) {
+  .dash-grid.with-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, .85fr); }
+  .zone-panel { position: sticky; top: 12px; }
+}
+@media (min-width: 900px) and (max-width: 1199px) {
+  .dash-grid.with-panel { grid-template-rows: auto 1fr; }
+  .dash-grid.with-panel > section:first-child { grid-row: span 2; }
+  .dash-grid.with-panel .zone-panel { grid-column: 2; }
+  .dash-grid.with-panel .dash-map { position: static; }
+}
+
+/* Punkte (Mülltonne, Wasserspender …) */
+.map .marker { cursor: pointer; }
+.map .marker circle { fill: #fff; stroke: #111; stroke-width: 1.5; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.35)); }
+.map .marker text { fill: #111; }
+.map .marker.hl circle { stroke: var(--red); stroke-width: 3; }
+.map .marker .pulse { fill: none; stroke: var(--red); stroke-width: 2; filter: none; transform-box: fill-box; transform-origin: center; animation: pulse 1.4s ease-out infinite; }
+@keyframes pulse { from { transform: scale(1); opacity: .9; } to { transform: scale(2.4); opacity: 0; } }
+.editor .marker { cursor: move; }
+.editor .marker.sel circle { stroke: var(--red); stroke-width: 3; }
+.marker-btn { white-space: nowrap; }
+.dash-map .ed-bar { margin-bottom: 8px; }
+.icon-pick { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 6px 0 12px; }
+.icon-pick button { font-size: 20px; padding: 6px 0; background: #fff; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.icon-pick button.active { border-color: var(--black); box-shadow: 0 0 0 1px var(--black); }
+.ed-form .lbl { display: block; font-size: 14px; font-weight: 600; }
+
+/* Layout-Bibliothek */
+.lib-item { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.lib-thumb { flex: none; width: 96px; height: auto; border-radius: 6px; }
+.lib-info { flex: 1; min-width: 0; font-size: 14px; }
+.lib-info .row { margin: 8px 0 0; }
+.lib-msg { background: #e8f6ee; border-left: 4px solid var(--ok); padding: 8px 10px; border-radius: 4px; font-size: 14px; margin: 0 0 12px; }
+dialog label.chk { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 0 0 12px; }
+dialog label.chk input { width: auto; display: inline; margin: 0; }
+
+/* Aufgaben-Icons */
+.ticon { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; border-radius: 8px; background: var(--bg); font-size: 20px; vertical-align: -9px; }
+.task .ticon { flex: none; margin: 0; vertical-align: 0; width: 38px; height: 38px; font-size: 21px; }
+.admin-sec td .ticon { width: 22px; height: 22px; font-size: 13px; margin-right: 6px; vertical-align: -4px; }
+.icon-field .lbl { display: block; font-size: 14px; font-weight: 600; }
+.icon-field .lbl small { font-weight: 500; margin-left: 6px; }
+#taskIcons { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 5px; margin: 6px 0 14px; }
+#taskIcons button { font-size: 18px; padding: 5px 0; }
+
+/* Tagesart (Werktag / Wochenende / Feiertag) */
+.day-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; border-left: 6px solid var(--muted); font-size: 15px; }
+.day-banner.we { border-left-color: var(--red); }
+.day-banner .grow { flex: 1; }
+.holidays { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.holidays .x { border: 0; background: none; cursor: pointer; padding: 0 0 0 4px; color: var(--muted); }
+
+/* Orte im Aufgaben-Dialog per Karte wählen */
+#taskDlg { width: min(720px, calc(100vw - 32px)); }
+#ortField { margin-bottom: 8px; }
+.ort-head { align-items: center; margin-bottom: 6px; }
+.ort-head .lbl { font-size: 14px; font-weight: 600; }
+.ort-head .grow { flex: 1; }
+.pick-map { padding: 8px; background: var(--bg); }
+.map.pick .zone, .map.pick .marker { cursor: pointer; }
+.map.placing, .map.placing .zone, .map.placing .marker { cursor: crosshair; }
+.map .marker.sel circle { stroke: var(--red); stroke-width: 3; }
+#newPointBar { background: var(--bg); border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+#newPointBar .icon-pick { margin: 0 0 8px; }
+#newPointBar .row > label { margin: 0; }
+#newPointBar p { margin: 8px 0 0; }
+#ortSummary { margin: 6px 2px 0; }
+
+/* Layout-Editor: Karte nimmt fast den ganzen Bildschirm ein */
+main.full { max-width: none; padding: 12px 20px 24px; }
+main.full .ed-bar { margin-bottom: 8px; }
+@media (min-width: 800px) {
+  .plan.ed-plan { grid-template-columns: minmax(0, 1fr) 320px; }
+  .ed-plan .map-wrap { padding: 8px; }
+  .ed-plan #edSvg { height: calc(100vh - 215px); min-height: 420px; } /* so hoch wie möglich, Seitenverhältnis bleibt */
+}
+.editor .all-box { fill: none; stroke: var(--red); stroke-width: 2; stroke-dasharray: 8 5; pointer-events: none; }
+#newPointBar .emoji-in { max-width: 140px; }
+
+/* Daten & Backup */
+.data-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 8px; }
+.data-grid h4 { margin: 0 0 4px; text-transform: uppercase; font-size: 15px; }
+.data-grid .meta { margin: 0 0 10px; }
+.import-box { margin-top: 16px; padding: 14px; border: 2px solid var(--black); border-radius: 8px; }
+.import-box .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; font-size: 14px; }
+.import-box ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.6; }
+
+/* Dashboard: Intervall-Block + nächste Aufgabe */
+.imp-box { background: #fff5f5; border: 2px solid var(--red); border-radius: 10px; padding: 10px 10px 12px; margin-bottom: 18px; }
+.imp-box h3 { color: var(--red); font-size: 15px; margin: 2px 4px 10px; }
+.task.dash.next { box-shadow: 0 0 0 2px var(--black), 0 6px 16px rgba(0,0,0,.12); }
+.badge.next-b { background: var(--black); color: #fff; }
+.map .zone.hl { animation: hlPulse 1.6s ease-in-out infinite; }
+@keyframes hlPulse { 50% { filter: url(#hlOutline) brightness(1.15); } }
+.hint .ticon { width: 24px; height: 24px; font-size: 14px; vertical-align: -6px; margin-right: 6px; }

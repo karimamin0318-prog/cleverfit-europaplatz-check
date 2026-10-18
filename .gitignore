@@ -1,0 +1,5 @@
+# Interne Unterlagen und Daten-Backups nicht ins öffentliche Repo
+*.pdf
+Self made Layout + Farbe.png
+studio-check-*.json
+.claude/
