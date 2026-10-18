@@ -136,7 +136,7 @@ button.check:hover { border-color: var(--ok); }
 
 /* Dashboard breiter, Studio Layout bekommt den meisten Platz – aber passt immer in die Bildschirmhöhe */
 main.wide { max-width: 1680px; }
-.dash-map .map { max-height: calc(100vh - 210px); min-height: 360px; }
+.dash-map .map { max-height: calc(100vh - 350px); min-height: 320px; } /* 350 = Kopf, Tabs, Tagesleiste, Überschrift + Hinweis/Legende darunter */
 
 /* Punkte (Mülltonne, Wasserspender …) */
 .map .marker { cursor: pointer; }
