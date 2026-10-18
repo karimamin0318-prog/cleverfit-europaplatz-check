@@ -5,22 +5,20 @@ Intervall-Aufgaben, Putzplan mit Studio-Karte und Layout-Editor.
 
 **App öffnen:** https://karimamin0318-prog.github.io/cleverfit-europaplatz-check/
 
-## Wichtig: Wo die Daten liegen
-Aufgaben, Häkchen, Layout und Punkte werden **nur im Browser des jeweiligen Geräts** gespeichert (localStorage) –
-nicht in diesem Repo und nicht auf einem Server.
+## Daten und Anmeldung
+Aufgaben, Häkchen, Layout und Punkte liegen in **Supabase** (Projekt `cleverfit-europaplatz-check`) und sind auf allen Geräten gleich.
 
-- Immer **denselben Browser** auf dem Theken-PC nutzen und dort **keine Browserdaten löschen**.
-- Regelmäßig **Backup** machen: Admin → Verwaltung → Daten & Backup → „Datei herunterladen“.
-- Daten auf ein anderes Gerät bringen: Backup exportieren und dort importieren.
-
-## Admin
-Oben rechts „Admin“ → PIN. Standard-PIN ist `1234` – **gleich nach dem ersten Start ändern** (Verwaltung → Einstellungen).
+- **Theken-PC:** einmal mit dem Theke-Konto anmelden, bleibt angemeldet. Darf nur abhaken.
+- **Admins** (Tabelle `admins`): dürfen Aufgaben und Layout ändern – zu Hause direkt, an der Theke über „Admin“.
+- Konten und Passwörter: Supabase-Dashboard → Authentication → Users. Registrieren ist gesperrt.
+- Datenbank-Setup: `supabase/setup.sql` (einmal im SQL Editor ausführen).
+- Backup: Admin → Verwaltung → Daten & Backup → „Datei herunterladen“ (Supabase gratis macht keine automatischen Backups).
 
 ## Theken-PC einrichten
-1. Chrome oder Edge mit der App-Adresse oben öffnen.
+1. Chrome oder Edge mit der App-Adresse öffnen, mit dem Theke-Konto anmelden.
 2. Optional als App installieren (Adressleiste → „App installieren“) und in den Windows-Autostart legen.
 3. Windows: Energieoptionen → Bildschirm/Standby auf „Nie“.
 
 ## Mitarbeiten
 Reine HTML/CSS/JS-Dateien ohne Build: `index.html`, `styles.css`, `app.js`.
-Lokal testen: `index.html` im Browser öffnen. Änderungen auf `main` sind nach ca. 1 Minute live.
+Änderungen auf `main` sind nach ca. 1 Minute live. Vor größeren Änderungen ein Backup ziehen.
