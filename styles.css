@@ -116,7 +116,7 @@ dialog input, dialog select { display: block; width: 100%; margin-top: 4px; padd
 
 /* Dashboard */
 .dash-grid { display: grid; gap: 24px; }
-@media (min-width: 900px) { .dash-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; } .dash-map { position: sticky; top: 12px; } }
+@media (min-width: 900px) { .dash-grid { grid-template-columns: minmax(340px, 1fr) minmax(0, 1.8fr); align-items: start; } .dash-map { position: sticky; top: 12px; } }
 .dash-grid h2 { margin-top: 0; }
 .task.dash { border-left: 6px solid var(--stripe); cursor: pointer; padding: 12px 14px; }
 .task.dash.picked { box-shadow: 0 0 0 2px var(--black); }
@@ -134,22 +134,9 @@ button.check:hover { border-color: var(--ok); }
 .map.focus .zone:not(.hl) { opacity: .3; }
 .map .zone.hl, .map .zone.hl:hover { filter: url(#hlOutline); }
 
-/* Dashboard: Bereichs-Panel rechts neben der Karte */
-main.wide { max-width: 1560px; }
-.zone-panel .tag { margin-bottom: 10px; }
-.zone-panel .meta { margin-left: 4px; }
-.zone-panel .progress { margin-top: 10px; }
-.zone-panel h3.sub { font-size: 14px; color: var(--muted); margin: 16px 0 8px; }
-@media (min-width: 1200px) {
-  .dash-grid.with-panel { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, .85fr); }
-  .zone-panel { position: sticky; top: 12px; }
-}
-@media (min-width: 900px) and (max-width: 1199px) {
-  .dash-grid.with-panel { grid-template-rows: auto 1fr; }
-  .dash-grid.with-panel > section:first-child { grid-row: span 2; }
-  .dash-grid.with-panel .zone-panel { grid-column: 2; }
-  .dash-grid.with-panel .dash-map { position: static; }
-}
+/* Dashboard breiter, Studio Layout bekommt den meisten Platz – aber passt immer in die Bildschirmhöhe */
+main.wide { max-width: 1680px; }
+.dash-map .map { max-height: calc(100vh - 210px); min-height: 360px; }
 
 /* Punkte (Mülltonne, Wasserspender …) */
 .map .marker { cursor: pointer; }

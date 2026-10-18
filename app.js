@@ -433,7 +433,7 @@ const views = {
         <div class="list">${todo.map(t => dashRow(t, t === next)).join('') || `<div class="empty">${empty}</div>`}</div>
         <details class="done-box" ${ui.doneOpen ? 'open' : ''}><summary>Erledigt (${done.length})</summary>
           <div class="list">${done.map(dashRow).join('') || '<div class="empty">Noch nichts erledigt.</div>'}</div></details></section>
-      <section class="dash-map"><div class="row ed-bar"><h2>Putzplan</h2><span class="grow"></span>${markerToggle()}</div><div class="map-wrap">${map}</div><p class="meta hint">${hint}</p>
+      <section class="dash-map"><div class="row ed-bar"><h2>Studio Layout</h2><span class="grow"></span>${markerToggle()}</div><div class="map-wrap">${map}</div><p class="meta hint">${hint}</p>
         <div class="legend"><span style="--c:#1a9c4a">alles erledigt</span><span class="done-key">schwarzer Rand = hier zu tun</span></div></section></div>`;
   },
 
@@ -923,6 +923,7 @@ function render() {
     + (ui.admin ? ' <button class="btn small ghost" id="topLogout">Gerät abmelden</button>' : '') : '';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === ui.tab));
   $('#view').classList.toggle('full', ui.tab === 'layout');
+  $('#view').classList.toggle('wide', ui.tab === 'dashboard');
   $('#view').innerHTML = views[ui.tab]();
 }
 
