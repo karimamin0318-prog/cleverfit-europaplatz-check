@@ -566,9 +566,24 @@ function dataSection() {
         <div class="row"><label class="btn small ghost">📂 Datei auswählen<input type="file" id="importFile" accept=".json,application/json" hidden></label>${undo}</div></div>
     </div>${preview}</div>`;
 }
+// Monats-Backup: Vermerk „backup|JJJJ-MM“ in der Datenbank – sobald ein Gerät gespeichert hat, ist die Erinnerung überall weg
+const monthKey = () => 'backup|' + today().slice(0, 7);
+function markBackup() { db.done[monthKey()] = new Date().toISOString(); save(); }
+// In den letzten 3 Tagen des Monats erinnern, solange diesen Monat noch kein Backup gespeichert wurde
+function checkBackup() {
+  const d = new Date(today() + 'T12:00'), lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  if (!cloud.ready || d.getDate() < lastDay - 2 || db.done[monthKey()] || document.querySelector('dialog[open]')) return;
+  let later = ''; try { later = localStorage.getItem('backup-later'); } catch {}
+  if (later !== today()) $('#backupDlg').showModal();
+}
+console.assert(new Date(2026, 1 + 1, 0).getDate() === 28 && new Date(2028, 2, 0).getDate() === 29); // Feb + Schaltjahr
+$('#backupNow').onclick = () => { exportData('download'); $('#backupDlg').close(); render(); };
+$('#backupLater').onclick = () => { try { localStorage.setItem('backup-later', today()); } catch {} $('#backupDlg').close(); };
+
 async function exportData(how) {
   const file = backupFile();
-  if (how === 'share') { try { await navigator.share({ files: [file], title: 'Studio Check Backup' }); } catch {} return; }
+  if (how === 'share') { try { await navigator.share({ files: [file], title: 'Studio Check Backup' }); markBackup(); } catch {} return; }
+  markBackup();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(file); a.download = file.name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -1139,18 +1154,19 @@ async function pushChanges() {
 // Lädt Aufgaben + Häkchen der letzten 2 Tage (+ Intervall-Häkchen). Ältere Häkchen bleiben in der Datenbank, werden aber nicht gebraucht.
 async function cloudLoad() {
   const since = new Date(Date.now() - 2 * 864e5).toISOString();
-  const [st, recent, intervals] = await Promise.all([
+  const [st, recent, intervals, backups] = await Promise.all([
     sb.from('studio').select('data').eq('id', STUDIO_ID).maybeSingle(),
     sb.from('done').select('key,done_at').gte('done_at', since).limit(5000),
     sb.from('done').select('key,done_at').like('key', '%|p%').limit(5000),
+    sb.from('done').select('key,done_at').like('key', 'backup|%').limit(500),
   ]);
-  const err = st.error || recent.error || intervals.error;
+  const err = st.error || recent.error || intervals.error || backups.error;
   if (err) throw err;
   if (st.data) Object.assign(db, st.data.data);
   else if (cloud.admin) cloudBar('Noch keine Daten in der Datenbank – sie werden jetzt von diesem Gerät hochgeladen.');
   else return cloudBar('Noch keine Aufgaben in der Datenbank. Ein Admin muss sich einmal anmelden.');
   db.done = {}; db.mittelDays = {};
-  for (const r of [...recent.data, ...intervals.data])
+  for (const r of [...recent.data, ...intervals.data, ...backups.data])
     if (r.key.startsWith('mittel|')) db.mittelDays[r.key.slice(7)] = r.done_at; else db.done[r.key] = r.done_at;
   normalize();
   cloud.config = st.data ? configJson() : ''; // leer → erster Speichervorgang lädt alles hoch
@@ -1181,6 +1197,7 @@ async function afterLogin(user) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'done' }, refresh)
     .subscribe();
   render();
+  checkBackup();
 }
 $('#loginForm').onsubmit = async e => {
   e.preventDefault();
@@ -1197,5 +1214,5 @@ async function start() {
 
 // Uhr + Ansicht minütlich auffrischen (überfällig-Status, Tageswechsel) und Stand aus der Datenbank holen
 const tick = () => { $('#clock').textContent = new Date().toLocaleString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
-setInterval(() => { tick(); if (cloud.ready) refresh(); else if (quiet()) render(); }, 60000);
+setInterval(() => { tick(); if (cloud.ready) { refresh(); checkBackup(); } else if (quiet()) render(); }, 60000);
 tick(); render(); start();
