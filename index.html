@@ -54,7 +54,7 @@
       <label>E-Mail<input id="adminEmail" type="email" autocomplete="off" required></label>
       <label>Passwort<input id="pinInput" type="password" autocomplete="off" required></label>
       <p id="pinErr" class="err"></p>
-      <div class="row end"><button value="cancel" formnovalidate class="btn ghost">Abbrechen</button><button class="btn">Login</button></div>
+      <div class="row end"><button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Abbrechen</button><button class="btn">Login</button></div>
     </form>
   </dialog>
 
@@ -111,7 +111,7 @@
         <div class="map-wrap pick-map" id="ortMap"></div>
         <p class="meta" id="ortSummary"></p>
       </div>
-      <div class="row end"><button value="cancel" formnovalidate class="btn ghost">Abbrechen</button><button class="btn">Speichern</button></div>
+      <div class="row end"><button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Abbrechen</button><button class="btn">Speichern</button></div>
     </form>
   </dialog>
 
