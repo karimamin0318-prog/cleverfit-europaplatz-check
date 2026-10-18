@@ -411,7 +411,7 @@ const endKey = t => t.to || t.time || '99:99';
 const byTime = (a, b) => sortKey(a).localeCompare(sortKey(b)) || endKey(a).localeCompare(endKey(b)) || (a.type === 'zone') - (b.type === 'zone') || db.tasks.indexOf(a) - db.tasks.indexOf(b); // gleiche Zeit: Reihenfolge wie eingetragen
 // Umriss um die ganze (auch L-förmige) Fläche, ohne innere Linien
 const HL_FILTER = `<filter id="hlOutline" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="4" result="d"/>
-  <feFlood flood-color="#111"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  <feFlood class="hl-flood" flood-color="#111"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
 
 const placeNames = t => [...new Set(taskMarkers(t).map(m => m.name)), ...(t.type === 'zone' ? [t.zoneId] : t.zoneIds || []).map(id => db.zones.find(z => z.id === id)?.name)].filter(Boolean);
 function dashRow(t, isNext = false) {
@@ -472,7 +472,7 @@ const views = {
         <details class="done-box" ${ui.doneOpen ? 'open' : ''}><summary>Erledigt (${done.length})</summary>
           <div class="list">${done.map(dashRow).join('') || '<div class="empty">Noch nichts erledigt.</div>'}</div></details></section>
       <section class="dash-map"><div class="row ed-bar"><h2>Studio Layout</h2><span class="grow"></span>${markerToggle()}</div><div class="map-wrap">${map}</div><p class="meta hint">${hint}</p>
-        <div class="legend"><span style="--c:#1a9c4a">alles erledigt</span><span class="done-key">schwarzer Rand = hier zu tun</span></div></section></div>`;
+        <div class="legend"><span style="--c:#1a9c4a">alles erledigt</span><span class="done-key">Rand = hier zu tun</span></div></section></div>`;
   },
 
   heute() {
@@ -1021,6 +1021,20 @@ function deviceLogout() {
 $('#account').onclick = e => { if (e.target.id === 'topLogout') deviceLogout(); };
 
 // Admin-Login
+// Hell/Dunkel: Standard dunkel, Wahl pro Gerät gemerkt (Startwert setzt index.html vor dem ersten Zeichnen)
+const THEME_ICON = {
+  dark: '<svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
+  light: '<svg class="glyph" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>',
+};
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('cf-theme', t); } catch {}
+  $('#themeBtn').innerHTML = THEME_ICON[t];
+  $('#themeBtn').title = t === 'dark' ? 'Hell schalten' : 'Dunkel schalten';
+}
+setTheme(document.documentElement.dataset.theme || 'dark');
+$('#themeBtn').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
 $('#adminBtn').onclick = () => {
   if (ui.admin) {
     ui.admin = false; ui.draft = ui.draftM = ui.sel = null;
