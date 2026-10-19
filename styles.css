@@ -421,10 +421,16 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .done .tx, .checking .tx { background-size: 100% 2px; }
 .strip, .task { transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease); }
 .strip.done, .task.done, .strip.checking, .task.checking { background: var(--ok-tint); }
-.check { transition: background-color var(--t-fast), border-color var(--t-fast); }
+.check { transition: background-color var(--t-fast), border-color var(--t-fast), color var(--t-fast); }
 .checking .check { background: var(--ok); border-color: var(--ok); color: #fff; animation: pop var(--t) var(--ease); }
 .checking .check::after { content: '✓'; animation: pop var(--t) var(--ease); }
 @keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+/* Wieder öffnen: Haken verschwindet, Strich zieht sich zurück, Grün blendet aus */
+.done.unchecking .tx { background-size: 0 2px; }
+.strip.done.unchecking, .task.done.unchecking { background: var(--card); }
+.done.unchecking .check { background: transparent; border-color: var(--muted); color: transparent; animation: unpop var(--t) var(--ease); }
+.strip.done.unchecking .sp-pl { color: var(--muted); }
+@keyframes unpop { 40% { transform: scale(.82); } 100% { transform: scale(1); } }
 .sign { transition: background-color var(--t) var(--ease); }
 .sign.checking { background: var(--ok); }
 .sign.checking .sg-done { background: #fff; color: var(--ok); }

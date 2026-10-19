@@ -332,9 +332,9 @@ function toggle(id) {
     save(); render();
   };
   const rows = [...document.querySelectorAll(`[data-toggle="${CSS.escape(id)}"]`)].map(b => b.closest('.strip, .task, .sign')).filter(Boolean);
-  if (db.done[k] || reduceMotion() || !rows.length) return commit();
-  if (rows.some(r => r.classList.contains('checking'))) return; // läuft schon
-  rows.forEach(r => r.classList.add('checking'));
+  if (reduceMotion() || !rows.length) return commit();
+  if (rows.some(r => r.matches('.checking, .unchecking'))) return; // läuft schon
+  rows.forEach(r => r.classList.add(db.done[k] ? 'unchecking' : 'checking')); // Wieder öffnen = dieselbe Animation rückwärts
   setTimeout(commit, 520); // Haken + grüner Strich sichtbar, dann rutscht die Aufgabe weg
 }
 const timeOf = t => new Date(t).toTimeString().slice(0, 5);
