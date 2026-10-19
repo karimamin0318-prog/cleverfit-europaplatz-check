@@ -393,7 +393,7 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 @media (min-width: 1101px) { .page:has(main.wide) { height: 100vh; } } /* Dashboard passt in den Bildschirm, die Liste scrollt innen */
 /* Eingeklappte Seitenleiste: nur Symbole (Knopf oben, Wahl pro Gerät gemerkt; Tablet startet eingeklappt) */
 .side { transition: width .3s cubic-bezier(.2, .8, .2, 1), padding .3s cubic-bezier(.2, .8, .2, 1); overflow-x: hidden; }
-.side :is(.loc, .tabs button span, .theme-seg span span, .account, .clock span, .nav-sep) { transition: opacity .18s, max-width .3s; white-space: nowrap; }
+.side :is(.loc, .tabs button span, .theme-seg span span, .account, .clock span, .nav-sep) { transition: opacity .18s, max-width .3s, color .18s; white-space: nowrap; }
 .side :is(.tabs button span, .theme-seg span span) { max-width: 160px; overflow: hidden; }
 .side-mini .side { width: 76px; padding: 16px 8px 12px; }
 .side-mini .side-head { padding: 0 0 22px; justify-content: center; }
@@ -402,7 +402,8 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .side-mini .brand:hover .lm { color: #ccc; }
 .side-mini .logo .lf { opacity: 0; } .side-mini .logo .lm { opacity: 1; }
 .side-mini .logo { width: 30px; overflow: hidden; } /* nur „cf“ zeigen, mittig */
-.side-mini :is(.loc, .tabs button span, .theme-seg span span, .account, .clock span, .nav-sep) { opacity: 0; pointer-events: none; }
+.side-mini :is(.loc, .tabs button span, .theme-seg span span, .account, .clock span) { opacity: 0; pointer-events: none; }
+.side-mini .nav-sep { color: transparent; height: 1px; padding: 0; margin: 14px 6px; overflow: hidden; } /* Text weg, Trennlinie bleibt */
 .side-mini .loc, .side-mini .account { height: 0; overflow: hidden; }
 .side-mini .clock { padding: 0; align-items: center; } .side-mini .clock b { font-size: 21px; } .side-mini .clock span { height: 0; }
 
