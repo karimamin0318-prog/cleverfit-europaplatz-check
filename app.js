@@ -1072,7 +1072,7 @@ $('#account').onclick = e => { if (e.target.id === 'topLogout') deviceLogout(); 
 function setTheme(t) {
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('cf-theme', t); } catch {}
-  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeSet === t));
+  $('#themeBtn').title = $('#themeBtn').ariaLabel = t === 'dark' ? 'Hell schalten' : 'Dunkel schalten';
 }
 setTheme(document.documentElement.dataset.theme || 'dark');
 // Seitenleiste ein-/ausklappen, pro Gerät gemerkt
@@ -1080,7 +1080,7 @@ const setSide = mini => { document.documentElement.classList.toggle('side-mini',
 $('#sideToggle').onclick = () => setSide(true);
 $('#brandBtn').onclick = () => { if (document.documentElement.classList.contains('side-mini')) setSide(false); }; // eingeklappt: Logo klappt wieder aus
 $('#brandBtn').tabIndex = document.documentElement.classList.contains('side-mini') ? 0 : -1;
-document.querySelector('.theme-seg').onclick = e => { const b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); };
+$('#themeBtn').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 
 $('#adminBtn').onclick = () => {
   if (ui.admin) {

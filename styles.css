@@ -58,10 +58,15 @@ body:not(.admin) .admin-only { display: none; }
 .clock { display: flex; flex-direction: column; padding: 0 10px; }
 .clock b { font: 900 36px/1 var(--cond); font-variant-numeric: tabular-nums; }
 .clock span { font: 700 13px var(--cond); letter-spacing: 1.5px; text-transform: uppercase; color: #8c8c8c; margin-top: 2px; }
-.theme-seg { display: grid; grid-template-columns: 1fr 1fr; background: #1c1c1c; padding: 3px; }
+.theme-seg { display: grid; }
+.theme-seg button span { display: flex; align-items: center; justify-content: center; gap: inherit; }
+/* ein Knopf: zeigt den Modus, in den er wechselt */
+:root[data-theme="dark"] .theme-btn .to-dark, :root:not([data-theme="dark"]) .theme-btn .to-light { display: none; }
 .theme-seg button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; background: none; border: 0; color: #8c8c8c; font: 800 13px var(--cond); letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
 .theme-seg .glyph { width: 15px; height: 15px; }
-.theme-seg button[aria-pressed="true"] { background: #fff; color: #0a0a0a; }
+.theme-seg button { background: #1c1c1c; color: #ccc; min-height: 42px; }
+.theme-seg button:hover { background: #262626; color: #fff; }
+.theme-seg .glyph { width: 18px; height: 18px; }
 .account { color: #8c8c8c; font-size: 12px; padding: 0 4px; display: flex; flex-direction: column; gap: 8px; overflow-wrap: anywhere; }
 .account .glyph { width: 14px; height: 14px; display: inline-block; vertical-align: -2px; margin-right: 4px; }
 .account .btn { color: #fff; }
@@ -367,8 +372,8 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 @media (min-width: 1101px) { .page:has(main.wide) { height: 100vh; } } /* Dashboard passt in den Bildschirm, die Liste scrollt innen */
 /* Eingeklappte Seitenleiste: nur Symbole (Knopf oben, Wahl pro Gerät gemerkt; Tablet startet eingeklappt) */
 .side { transition: width .3s cubic-bezier(.2, .8, .2, 1), padding .3s cubic-bezier(.2, .8, .2, 1); overflow-x: hidden; }
-.side :is(.loc, .tabs button span, .theme-seg span, .account, .clock span, .nav-sep) { transition: opacity .18s, max-width .3s; white-space: nowrap; }
-.side :is(.tabs button span, .theme-seg span) { max-width: 160px; overflow: hidden; }
+.side :is(.loc, .tabs button span, .theme-seg span span, .account, .clock span, .nav-sep) { transition: opacity .18s, max-width .3s; white-space: nowrap; }
+.side :is(.tabs button span, .theme-seg span span) { max-width: 160px; overflow: hidden; }
 .side-mini .side { width: 76px; padding: 16px 8px 12px; }
 .side-mini .side-head { padding: 0 0 22px; justify-content: center; }
 .side-mini .side-toggle { position: absolute; opacity: 0; pointer-events: none; }
@@ -376,16 +381,16 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .side-mini .brand:hover .lm { color: #ccc; }
 .side-mini .logo .lf { opacity: 0; } .side-mini .logo .lm { opacity: 1; }
 .side-mini .logo { width: 30px; overflow: hidden; } /* nur „cf“ zeigen, mittig */
-.side-mini :is(.loc, .tabs button span, .theme-seg span, .account, .clock span, .nav-sep) { opacity: 0; pointer-events: none; }
+.side-mini :is(.loc, .tabs button span, .theme-seg span span, .account, .clock span, .nav-sep) { opacity: 0; pointer-events: none; }
 .side-mini .loc, .side-mini .account { height: 0; overflow: hidden; }
 .side-mini .clock { padding: 0; align-items: center; } .side-mini .clock b { font-size: 21px; } .side-mini .clock span { height: 0; }
-.side-mini .theme-seg { grid-template-columns: 1fr; } .side-mini .theme-seg button { min-height: 42px; }
+
 .side-mini .side .admin-btn { font-size: 0; padding: 0; min-height: 42px; }
 .side-mini .side .admin-btn::before { content: 'Admin'; font-size: 12px; }
 /* eingeklappt: Beschriftungen auf Breite 0 → Symbole exakt mittig (Leiste 76 px, Knopf 60 px inkl. 4 px Markierung) */
-.side-mini :is(.tabs button span, .theme-seg span) { max-width: 0; }
+.side-mini :is(.tabs button span, .theme-seg span span) { max-width: 0; }
 .side-mini .side .tabs button { gap: 0; padding: 0 0 0 15px; }
-.side-mini .theme-seg button { gap: 0; }
+.side-mini .theme-seg button, .side-mini .theme-seg button span { gap: 0; }
 .side-mini .side .admin-btn { display: grid; place-items: center; width: 100%; }
 @media (prefers-reduced-motion: reduce) { .side, .side * { transition: none !important; } }
 @media (max-width: 1100px) {
@@ -399,12 +404,12 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 }
 @media (max-width: 640px) {
   body { flex-direction: column; } .side-toggle { display: none; } .side-head { padding: 0; } .side { transition: none; }
-  .loc, .tabs button span, .theme-seg span, .account, .side .admin-btn { font-size: 0; } .loc, .tabs button span, .theme-seg span, .account { display: none; }
+  .loc, .tabs button span, .theme-seg span span, .account, .side .admin-btn { font-size: 0; } .loc, .tabs button span, .theme-seg span span, .account { display: none; }
   .side .admin-btn::before { content: 'Admin'; font-size: 12px; } .side .admin-btn { padding: 0; }
   .side { position: static; width: auto; height: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; overflow-x: auto; }
   .brand { padding: 0 6px 0 0; } .tabs { flex-direction: row; } .side-foot { margin: 0 0 0 auto; padding: 0; flex-direction: row; align-items: center; }
   .tabs button { width: 46px; min-height: 46px; border-left: 0; border-bottom: 3px solid transparent; } .tabs button.active { border-bottom-color: var(--red); }
-  .nav-sep, .clock { display: none; } .theme-seg { width: auto; grid-template-columns: 1fr 1fr; } .theme-seg button { min-height: 40px; width: 40px; }
+  .nav-sep, .clock { display: none; } .theme-seg button { min-height: 40px; width: 40px; }
   .side .admin-btn { width: 56px; min-height: 40px; }
   main { padding: 14px 12px 40px; }
   .sign { grid-template-columns: minmax(0, 1fr) auto; } .sg-ico { display: none; }
