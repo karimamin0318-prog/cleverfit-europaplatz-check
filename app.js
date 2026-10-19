@@ -69,6 +69,12 @@ const period = (t, day = today()) => Math.floor((dayNum(day) - dayNum(t.startDat
 // Stündliche Aufgaben: eigenes Häkchen pro Stunde (Schlüssel z.B. 2026-10-18T14)
 const periodKey = (t, day = today(), hour = nowHM().slice(0, 2)) =>
   t.type === 'intervall' ? 'p' + period(t, day) : t.hourly ? `${day}T${hour}` : day;
+// Tage seit fällig: ab der ersten nicht erledigten Periode – eine verpasste Periode wird nicht „vergessen“
+function dueSince(t, day = today()) {
+  const p = period(t, day), done = Object.keys(db.done).filter(k => k.startsWith(t.id + '|p')).map(k => +k.slice(t.id.length + 2)).filter(n => n <= p);
+  const first = Math.min(done.length ? Math.max(...done) + 1 : 0, p);
+  return dayNum(day) - (dayNum(t.startDate) + first * t.everyDays);
+}
 console.assert(period({ startDate: '2026-10-01', everyDays: 14 }, '2026-10-14') === 0);
 console.assert(period({ startDate: '2026-10-01', everyDays: 14 }, '2026-10-15') === 1);
 console.assert(periodKey({ type: 'schicht' }, '2026-10-18') === '2026-10-18');
@@ -305,6 +311,12 @@ db.layouts ??= []; // gespeicherte Layouts: { id, studio, name, note, savedAt, z
 delete db.pin; // früher: Admin-PIN, jetzt Admin-Konten
 }
 normalize();
+{ // Selbsttest dueSince: verpasste Periode zählt weiter
+  const keep = db.done, t = { id: 'T', everyDays: 14, startDate: '2026-10-01' };
+  db.done = { 'T|p0': 'x' };
+  console.assert(dueSince(t, '2026-10-20') === 5 && dueSince(t, '2026-10-30') === 15, 'dueSince');
+  db.done = keep;
+}
 
 const ui = { tab: 'dashboard', admin: false, shift: currentShift(), zone: null, pick: null, doneOpen: false, showMarkers: false };
 const $ = s => document.querySelector(s);
@@ -437,7 +449,7 @@ const HL_FILTER = `<filter id="hlOutline" x="-20%" y="-20%" width="140%" height=
 const placeNames = t => [...new Set(taskMarkers(t).map(m => m.name)), ...(t.type === 'zone' ? [t.zoneId] : t.zoneIds || []).map(id => db.zones.find(z => z.id === id)?.name)].filter(Boolean);
 function dashRow(t, isNext = false) {
   const d = doneAt(t), s = taskShift(t);
-  const since = t.type === 'intervall' ? dayNum(today()) - (dayNum(t.startDate) + period(t) * t.everyDays) : 0;
+  const since = t.type === 'intervall' ? dueSince(t) : 0;
   const over = t.type === 'intervall' ? !d && since > 0 : isOverdue(t);
   const when = t.type === 'intervall' ? 'Intervall' : t.hourly ? 'Stündl.' : hm(t.time || t.from || SHIFTS[s]?.from || '') || '–';
   const stripe = t.type === 'intervall' ? 'var(--red)' : SHIFTS[s]?.color || 'transparent';
@@ -604,9 +616,10 @@ const views = {
       const since = dayNum(today()) - (dayNum(t.startDate) + p * t.everyDays);
       const next = t.everyDays - since;
       const last = Object.entries(db.done).filter(([k]) => k.startsWith(t.id + '|')).map(([, v]) => v).sort().pop();
+      const due = dueSince(t);
       const status = doneAt(t) ? `nächste in ${next} Tag${next === 1 ? '' : 'en'}`
-        : since === 0 ? '<span class="badge red">fällig heute</span>'
-        : `<span class="badge red">überfällig seit ${since} Tag${since === 1 ? '' : 'en'}</span>`;
+        : due === 0 ? '<span class="badge red">fällig heute</span>'
+        : `<span class="badge red">überfällig seit ${due} Tag${due === 1 ? '' : 'en'}</span>`;
       const lastTxt = last ? ` · zuletzt ${new Date(last).toLocaleDateString('de-AT')}` : '';
       return taskRow(t, `<span class="badge">alle ${t.everyDays} Tage</span>${status}${lastTxt}`, !doneAt(t));
     }).join('');
@@ -1273,12 +1286,23 @@ $('#themeBtn').onclick = () => {
   replay([...document.querySelectorAll('#themeBtn > span')].find(s => s.offsetParent), 'spin'); // das jetzt sichtbare Symbol
 };
 
+const draftDirty = () => !!ui.draft && (JSON.stringify(ui.draft) !== JSON.stringify(db.zones) || JSON.stringify(ui.draftM) !== JSON.stringify(db.markers));
+// keepDraft: beim automatischen Beenden bleibt der Editor-Entwurf, bis sich ein Admin wieder anmeldet
+function endAdmin(keepDraft = false) {
+  ui.admin = false; ui.sel = ui.multi = null;
+  if (!keepDraft) ui.draft = ui.draftM = null;
+  if (cloud.admin === sbAdmin) { sbAdmin.auth.signOut(); cloud.admin = null; }
+  if (ui.tab === 'admin' || ui.tab === 'layout') ui.tab = 'dashboard';
+  render();
+}
+let lastInput = Date.now();
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastInput = Date.now(); }, true));
+const ADMIN_IDLE_MIN = 15; // Theke: Admin-Rechte nicht offen stehen lassen
+const adminIdleCheck = () => { if (ui.admin && cloud.admin === sbAdmin && Date.now() - lastInput > ADMIN_IDLE_MIN * 60e3 && !document.querySelector('dialog[open]')) endAdmin(true); };
 $('#adminBtn').onclick = () => {
   if (ui.admin) {
-    ui.admin = false; ui.draft = ui.draftM = ui.sel = null;
-    if (cloud.admin === sbAdmin) { sbAdmin.auth.signOut(); cloud.admin = null; }
-    if (ui.tab === 'admin' || ui.tab === 'layout') ui.tab = 'dashboard';
-    return render();
+    if (draftDirty() && !confirm('Das Layout im Editor ist noch nicht gespeichert. Trotzdem beenden und Änderungen verwerfen?')) return;
+    return endAdmin();
   }
   if (cloud.isAdmin) { ui.admin = true; ui.tab = 'admin'; return render(); } // Gerät ist schon mit Admin-Konto angemeldet
   $('#adminEmail').value = ''; $('#pinInput').value = ''; $('#pinErr').textContent = ''; $('#pinDlg').showModal();
@@ -1518,5 +1542,5 @@ async function start() {
 
 // Uhr + Ansicht minütlich auffrischen (überfällig-Status, Tageswechsel) und Stand aus der Datenbank holen
 const tick = () => { const n = new Date(); $('#clock').textContent = n.toTimeString().slice(0, 5); $('#clockDate').textContent = n.toLocaleDateString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit' }); };
-setInterval(() => { tick(); if (cloud.ready) { refresh(); checkBackup(); } else if (quiet()) render(); }, 60000);
+setInterval(() => { tick(); adminIdleCheck(); if (cloud.ready) { refresh(); checkBackup(); } else if (quiet()) render(); }, 60000);
 tick(); render(); start();
