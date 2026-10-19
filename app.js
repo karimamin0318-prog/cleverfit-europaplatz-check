@@ -314,7 +314,7 @@ function currentShift() {
 const doneAt = t => db.done[t.id + '|' + periodKey(t)];
 // Aufgabe antippen: ist sie gerade auf der Karte → ausblenden (ganzer Raum), sonst ihren Ort zeigen
 function pickTask(id) {
-  const shown = !ui.hideMap && (ui.pick || document.querySelector('.task.dash.next')?.dataset.pick);
+  const shown = !ui.hideMap && (ui.pick || document.querySelector('.strip.next')?.dataset.pick);
   if (id === 'next') Object.assign(ui, { pick: null, hideMap: false });
   else if (id === shown) Object.assign(ui, { pick: null, hideMap: true });
   else Object.assign(ui, { pick: id, hideMap: false });
@@ -368,8 +368,8 @@ function zoneSvg(z, { done = false, sel = false, piece = -1, hl = false, green =
 // Punkt (Mülltonne, Wasserspender …): Kreis mit Symbol, Name darunter
 function markerSvg(m, { hl = false, sel = false } = {}) {
   return `<g class="marker ${hl ? 'hl' : ''} ${sel ? 'sel' : ''}" data-marker="${m.id}" transform="translate(${m.x} ${m.y})">
-    <title>${esc(m.name)}</title><circle class="hit" r="16"/>${hl ? '<circle class="pulse" r="11"/>' : ''}<circle r="11"/>
-    ${glyphOf(m.icon) ? glyph(m.icon, 'x="-7" y="-7" width="14" height="14"') : `<text class="ico" font-size="12">${esc(m.icon || '•')}</text>`}</g>`; // nur Icon, Name als Tooltip
+    <title>${esc(m.name)}</title><circle class="hit" r="19"/>${hl ? '<rect class="pulse" x="-13" y="-13" width="26" height="26" rx="2"/>' : ''}<rect class="plate" x="-13" y="-13" width="26" height="26" rx="2"/>
+    ${glyphOf(m.icon) ? glyph(m.icon, 'x="-8.5" y="-8.5" width="17" height="17"') : `<text class="ico" font-size="12">${esc(m.icon || '•')}</text>`}</g>`; // nur Icon, Name als Tooltip
 }
 const MARKER_ICONS = [['🗑️', 'Mülltonne'], ['💧', 'Getränkebar'], ['🥤', 'Bodyshake'], ['☕', 'Kaffeeautomat'], ['📱', 'Studio-Tablet'],
   ['💡', 'Lichtschalter'], ['📺', 'Fernseher'], ['🪟', 'Fenster'], ['🧴', 'Desinfektion'], ['🧻', 'Papierspender'], ['🧹', 'Putzmittel'],
@@ -419,16 +419,35 @@ function dashRow(t, isNext = false) {
   const d = doneAt(t), s = taskShift(t);
   const since = t.type === 'intervall' ? dayNum(today()) - (dayNum(t.startDate) + period(t) * t.everyDays) : 0;
   const over = t.type === 'intervall' ? !d && since > 0 : isOverdue(t);
-  const tag = t.type === 'intervall' ? '<span class="tag imp">Wichtig · Intervall</span>'
-    : s ? `<span class="tag" style="--c:${SHIFTS[s].color}">${SHIFTS[s].name.replace('schicht', '')}</span>` : '';
-  const when = t.type === 'intervall' ? `alle ${t.everyDays} Tage` : whenText(t);
-  const places = placeNames(t).join(', ');
+  const when = t.type === 'intervall' ? 'Intervall' : t.hourly ? 'Stündl.' : hm(t.time || t.from || SHIFTS[s]?.from || '') || '–';
   const stripe = t.type === 'intervall' ? 'var(--red)' : SHIFTS[s]?.color || 'transparent';
-  return `<div class="task dash ${d ? 'done' : ''} ${ui.pick === t.id ? 'picked' : ''} ${isNext ? 'next' : ''}" data-pick="${t.id}" tabindex="0" role="button" aria-pressed="${ui.pick === t.id}" style="--stripe:${stripe}">
-    <button class="check" data-toggle="${t.id}" aria-label="${d ? 'Wieder öffnen' : 'Erledigt'}">${d ? '✓' : ''}</button>
-    ${iconChip(t)}<div class="body"><div class="title">${esc(t.title)}</div>
-    <div class="meta">${isNext ? '<span class="badge next-b">▶ Als Nächstes</span>' : ''}${tag}${when ? `<span class="badge">${when}</span>` : ''}${over ? `<span class="badge red">${since > 0 ? `überfällig seit ${since} T.` : 'überfällig'}</span>` : ''}
-    ${places ? `<span class="place">${esc(places)}</span>` : ''}${d ? `<span class="badge green">erledigt ${timeOf(d)}</span>` : ''}</div></div></div>`;
+  const late = over ? `<em class="sp-late">${since > 0 ? `überfällig seit ${since} T.` : 'überfällig'}</em>` : '';
+  return `<div class="strip ${d ? 'done' : ''} ${ui.pick === t.id ? 'picked' : ''} ${isNext ? 'next' : ''}" data-pick="${t.id}" tabindex="0" role="button" aria-pressed="${ui.pick === t.id}" style="--stripe:${stripe}">
+    <span class="sp-tm ${/\d/.test(when) ? '' : 'txt'}">${when}</span><span class="sp-ti">${esc(t.title)}${late}</span>
+    <span class="sp-pl">${d ? `✓ ${timeOf(d)}` : esc(placeNames(t).join(' · '))}</span>
+    <button class="check" data-toggle="${t.id}" aria-label="${d ? 'Wieder öffnen' : 'Erledigt'}">${d ? '✓' : ''}</button></div>`;
+}
+
+// Stundenleiste: laufende Schicht als Zeitachse, Aufgaben als Striche, rote Jetzt-Marke
+const mins = s => +s.slice(0, 2) * 60 + +s.slice(3, 5);
+function hourBar(list) {
+  const sh = SHIFTS[currentShift()], a = mins(sh.from), b = mins(sh.to);
+  const pos = m => Math.max(0, Math.min(100, (m - a) / (b - a) * 100));
+  const inShift = list.filter(t => t.type !== 'intervall' && sortKey(t) >= sh.from && sortKey(t) < sh.to);
+  const next = inShift.find(t => !doneAt(t)), same = {};
+  const d = today(), type = dayType(d), hol = holidayName(d);
+  const label = type === 'wt' ? 'Werktag' : hol ? `Feiertag · ${hol}` : 'Wochenende';
+  const mittel = type === 'we' ? `<button class="btn small ${mittelActive() ? '' : 'ghost'}" data-mittel>Mittelschicht heute: ${mittelActive() ? 'ja' : 'nein'}</button>` : '';
+  const hours = []; for (let m = Math.ceil(a / 60) * 60; m <= b; m += 60) hours.push(m);
+  const now = pos(mins(nowHM()));
+  return `<div class="hourbar"><div class="hb-day"><b>${new Date(d + 'T12:00').toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+      <span>${label} · ${sh.name} ${hm(sh.from).slice(0, 2)}–${hm(sh.to).slice(0, 2)}</span></div>
+    <div class="hb-track" aria-hidden="true"><i class="hb-fill" style="width:${now}%"></i>
+      ${inShift.map(t => { const k = sortKey(t), n = same[k] = (same[k] ?? -1) + 1; // gleiche Uhrzeit: Striche leicht versetzt
+        return `<i class="hb-tick ${doneAt(t) ? 'd' : t === next ? 'n' : ''}" style="left:${pos(mins(k)) + n * .7}%"></i>`; }).join('')}
+      <i class="hb-now" style="left:${now}%"><span>Jetzt ${hm(nowHM())}</span></i>
+      ${hours.map(m => `<em style="left:${pos(m)}%">${hm(String(m / 60).padStart(2, '0') + ':00').slice(0, 2)}</em>`).join('')}</div>
+    <div class="hb-score"><b>${inShift.filter(doneAt).length}</b>/${inShift.length} erledigt</div>${mittel}</div>`;
 }
 
 function dayBanner() {
@@ -454,26 +473,36 @@ const views = {
     const pick = ui.hideMap ? null : db.tasks.find(t => t.id === ui.pick) || next, auto = pick && pick === next && !ui.pick;
     const hl = new Set(pick ? taskZones(pick) : []);
     const pm = new Set(pick ? taskMarkers(pick).map(m => m.id) : []); // Punkte der Aufgabe immer zeigen, auch wenn ausgeblendet
-    const map = mapSvg(hl.size || pm.size ? 'focus' : '', db.zones.map(z => zoneSvg(z, { green: zoneDone(z), hl: hl.has(z.id), sel: ui.zone === z.id })).join('')
+    const map = mapSvg(`board ${hl.size || pm.size ? 'focus' : ''}`, db.zones.map(z => zoneSvg(z, { green: zoneDone(z), hl: hl.has(z.id), sel: ui.zone === z.id })).join('')
       + db.markers.filter(m => ui.showMarkers || pm.has(m.id)).map(m => markerSvg(m, { hl: pm.has(m.id) })).join(''));
-    const hint = ui.hideMap ? 'Ganzer Raum sichtbar. Aufgabe antippen = Ort zeigen · abhaken = weiter mit der nächsten.'
-      : !pick ? 'Alles erledigt. Bereich antippen = links nur seine Aufgaben.'
-      : `${auto ? 'Als Nächstes: ' : ''}<b>${iconChip(pick)}${esc(pick.title)}</b> – ${hl.size || pm.size ? 'markiert auf der Karte.' : 'kein fester Ort.'}`
-        + (ui.pick ? ' <button class="btn small ghost" data-pick="next">Zurück zur nächsten Aufgabe</button>' : '');
-    const zs = zone && SHIFTS[effShift(zone.shift)];
-    const head = zone
-      ? `<button class="btn small ghost" data-zone="${zone.id}">← Alle To-dos</button><h2>${esc(zone.name)}</h2>${zs ? `<span class="tag" style="--c:${zs.color}">${zs.name}</span>` : ''}`
-      : '<h2>Heute zu tun</h2>';
-    const empty = zone ? (shown.length ? 'Alles erledigt in diesem Bereich!' : 'Heute keine Aufgaben in diesem Bereich.') : 'Alles erledigt für heute!';
-    return `${dayBanner()}<div class="dash-grid">
-      <section><div class="row ed-bar">${head}<span class="grow"></span><span class="meta">${open.length} offen · ${done.length} erledigt</span></div>
-        ${progress(shown)}
-        ${imp.length ? `<div class="imp-box"><h3>${glyph('⚠')} Wichtig · Intervall (${imp.length})</h3><div class="list">${imp.map(dashRow).join('')}</div></div>` : ''}
-        <div class="list">${todo.map(t => dashRow(t, t === next)).join('') || `<div class="empty">${empty}</div>`}</div>
+    const hint = ui.hideMap ? 'Ganzer Raum sichtbar. Aufgabe antippen = Ort zeigen.'
+      : !pick ? 'Bereich antippen = links nur seine Aufgaben.'
+      : `${auto ? '' : '<b>' + esc(pick.title) + '</b> – '}${hl.size || pm.size ? 'Rot = hier zu tun.' : 'Diese Aufgabe hat keinen festen Ort.'}`
+        + (ui.pick ? ' <button class="btn small ghost" data-pick="next">Zurück zur nächsten</button>' : '');
+    const empty = zone ? (shown.length ? 'Alles erledigt in diesem Bereich' : 'Heute nichts in diesem Bereich') : 'Alles erledigt für heute';
+    // Rote Tafel: die nächste Aufgabe (sonst eine fällige Intervall-Aufgabe), mit ihrem Symbol wie ein Schild
+    const cur = next || imp[0], places = cur && placeNames(cur).join(' · ');
+    const sign = cur ? `<div class="sign ${isOverdue(cur) ? 'late' : ''}"><div class="sg-txt">
+        <span class="sg-k">${zone ? esc(zone.name) + ' · ' : ''}${cur === next ? 'Als Nächstes' : 'Intervall fällig'}${whenText(cur) ? ' · ' + whenText(cur) : ''}${isOverdue(cur) ? ' · überfällig' : ''}</span>
+        <h2>${esc(cur.title)}</h2>${places ? `<span class="sg-w">→ ${esc(places)}</span>` : ''}</div>
+        <button class="sg-done" data-toggle="${cur.id}">Erledigt</button>
+        <span class="sg-ico" aria-hidden="true">${cur.icon ? glyph(cur.icon) : '<svg class="glyph" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg>'}</span></div>`
+      : `<div class="sign ok"><div class="sg-txt"><span class="sg-k">${zone ? esc(zone.name) : 'Heute'}</span><h2>${empty}</h2></div><span class="sg-ico" aria-hidden="true">✓</span></div>`;
+    const pct = shown.length ? done.length / shown.length * 100 : 0;
+    return `${hourBar(list)}<div class="board">
+      <div class="b-sign">${sign}</div>
+      <div class="b-stats">
+        <div class="pane"><span class="pane-k">Fortschritt</span><b class="big">${done.length}/${shown.length}</b>
+          <span class="pane-k">${zone ? esc(zone.name) : 'heute erledigt'}</span><div class="progress"><div style="width:${pct}%"></div></div></div>
+        <div class="pane ${imp.length ? 'imp' : ''}"><span class="pane-k">Intervall</span>${imp.length
+          ? `<b class="imp-t">${esc(imp[0].title)}</b><span class="pane-k">${imp.length > 1 ? `+ ${imp.length - 1} weitere · ` : ''}heute fällig</span>`
+          : '<b class="imp-t muted">Nichts fällig</b>'}</div></div>
+      <section class="b-list">${zone ? `<div class="list-head"><button class="btn small ghost" data-zone="${zone.id}">← Alle To-dos</button><b>${esc(zone.name)}</b></div>` : ''}
+        <div class="list">${[...imp, ...todo].map(t => dashRow(t, t === next)).join('') || `<div class="empty">${empty}</div>`}</div>
         <details class="done-box" ${ui.doneOpen ? 'open' : ''}><summary>Erledigt (${done.length})</summary>
-          <div class="list">${done.map(dashRow).join('') || '<div class="empty">Noch nichts erledigt.</div>'}</div></details></section>
-      <section class="dash-map"><div class="row ed-bar"><h2>Studio Layout</h2><span class="grow"></span>${markerToggle()}</div><div class="map-wrap">${map}</div><p class="meta hint">${hint}</p>
-        <div class="legend"><span style="--c:#1a9c4a">alles erledigt</span><span class="done-key">Rand = hier zu tun</span></div></section></div>`;
+          <div class="list">${done.map(t => dashRow(t)).join('') || '<div class="empty">Noch nichts erledigt.</div>'}</div></details></section>
+      <section class="pane b-map"><div class="pane-h"><span class="pane-k">Übersichtsplan</span><span class="grow"></span>${markerToggle()}</div>
+        <div class="map-fill">${map}</div><p class="hint">${hint}</p></section></div>`;
   },
 
   heute() {
@@ -966,7 +995,7 @@ function edAction(a, val) {
 
 function render() {
   document.body.classList.toggle('admin', ui.admin);
-  $('#adminBtn').textContent = ui.admin ? 'Admin beenden' : 'Admin';
+  $('#adminBtn').textContent = ui.admin ? 'Admin beenden' : 'Admin-Login';
   // Wer ist angemeldet? Gerät abmelden nur im Admin-Modus, damit an der Theke niemand aus Versehen abmeldet
   $('#account').innerHTML = cloud.email ? `<span title="Angemeldet">${glyph('👋')}${esc(cloud.email)}</span>`
     + (ui.admin ? ' <button class="btn small ghost" id="topLogout">Gerät abmelden</button>' : '') : '';
@@ -1037,18 +1066,13 @@ $('#account').onclick = e => { if (e.target.id === 'topLogout') deviceLogout(); 
 
 // Admin-Login
 // Hell/Dunkel: Standard dunkel, Wahl pro Gerät gemerkt (Startwert setzt index.html vor dem ersten Zeichnen)
-const THEME_ICON = {
-  dark: '<svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
-  light: '<svg class="glyph" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>',
-};
 function setTheme(t) {
   document.documentElement.dataset.theme = t;
   try { localStorage.setItem('cf-theme', t); } catch {}
-  $('#themeBtn').innerHTML = THEME_ICON[t];
-  $('#themeBtn').title = t === 'dark' ? 'Hell schalten' : 'Dunkel schalten';
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeSet === t));
 }
 setTheme(document.documentElement.dataset.theme || 'dark');
-$('#themeBtn').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+document.querySelector('.theme-seg').onclick = e => { const b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); };
 
 $('#adminBtn').onclick = () => {
   if (ui.admin) {
@@ -1281,6 +1305,6 @@ async function start() {
 }
 
 // Uhr + Ansicht minütlich auffrischen (überfällig-Status, Tageswechsel) und Stand aus der Datenbank holen
-const tick = () => { $('#clock').textContent = new Date().toLocaleString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); };
+const tick = () => { const n = new Date(); $('#clock').textContent = n.toTimeString().slice(0, 5); $('#clockDate').textContent = n.toLocaleDateString('de-AT', { weekday: 'short', day: '2-digit', month: '2-digit' }); };
 setInterval(() => { tick(); if (cloud.ready) { refresh(); checkBackup(); } else if (quiet()) render(); }, 60000);
 tick(); render(); start();
