@@ -1087,7 +1087,7 @@ function render() {
   $('#view').innerHTML = views[ui.tab]();
   if (keep) keep.forEach(([s, y]) => { if (y && $(s)) $(s).scrollTop = y; });
   if (render.tab !== ui.tab) { if (render.tab) replay($('#view'), 'enter'); render.tab = ui.tab; }
-  if (fk) $('#view').querySelector(fk)?.focus();
+  if (fk) $('#view').querySelector(fk)?.focus({ preventScroll: true }); // Fokus zurück, ohne die Liste zur Aufgabe zu scrollen
   if (ui.tab === 'admin') applyRange();
 }
 
