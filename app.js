@@ -129,6 +129,7 @@ const GLYPHS = {
   '🔌': '<path d="M9 2.5v4.5M15 2.5v4.5M6 7h12v4a6 6 0 0 1-12 0zM12 17v4.5"/>',
   '🚪': '<path d="M6 21V3h12v18M3.5 21h17"/><circle cx="14.5" cy="12" r="1" fill="currentColor" stroke="none"/>',
   '🚿': '<path d="M5 21V7a4 4 0 0 1 8 0v1M9 8h8M11 11.5v.5M15 11.5v.5M13 14.5v.5M10 17v.5M16 17v.5M13 20v.5"/>',
+  '⚠': '<path d="M12 3.5 2.5 20h19zM12 10v4.5M12 17.5v.01"/>',
   '❄': '<path d="M12 2.5v19M3.8 7.3l16.4 9.4M3.8 16.7l16.4-9.4M9 4.5l3 2 3-2M9 19.5l3-2 3 2"/>',
 };
 const glyphOf = icon => GLYPHS[String(icon || '').replace(/\uFE0F/g, '')];
@@ -360,14 +361,14 @@ function svgLabel([x, y, w, h], txt) {
 // rects: [x, y, w, h, Beschriftung?] – überlappende Teile ergeben L-Formen; Name steht auf dem ersten Teil.
 function zoneSvg(z, { done = false, sel = false, piece = -1, hl = false, green = false } = {}) {
   const fill = green ? '#1a9c4a' : done ? pale(fillOf(z)) : fillOf(z);
-  return `<g class="zone ${sel ? 'sel' : ''} ${hl ? 'hl' : ''}" data-zone="${z.id}" style="--fill:${fill};--txt:${isLight(fill) ? '#111' : '#fff'}">
+  return `<g class="zone ${sel ? 'sel' : ''} ${hl ? 'hl' : ''}" data-zone="${z.id}" tabindex="0" role="button" aria-label="${esc(z.name)}" style="--fill:${fill};--txt:${isLight(fill) ? '#111' : '#fff'}">
     <title>${esc(z.name)}</title>${z.rects.map(([x, y, w, h], i) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" data-piece="${i}" class="${i === piece ? 'cur' : ''}"/>`).join('')}
     ${svgLabel(z.rects[0], (done || green ? '✓ ' : '') + (z.label || z.name))}${z.rects.slice(1).filter(r => r[4]).map(r => svgLabel(r, r[4])).join('')}</g>`;
 }
 // Punkt (Mülltonne, Wasserspender …): Kreis mit Symbol, Name darunter
 function markerSvg(m, { hl = false, sel = false } = {}) {
   return `<g class="marker ${hl ? 'hl' : ''} ${sel ? 'sel' : ''}" data-marker="${m.id}" transform="translate(${m.x} ${m.y})">
-    <title>${esc(m.name)}</title>${hl ? '<circle class="pulse" r="11"/>' : ''}<circle r="11"/>
+    <title>${esc(m.name)}</title><circle class="hit" r="16"/>${hl ? '<circle class="pulse" r="11"/>' : ''}<circle r="11"/>
     ${glyphOf(m.icon) ? glyph(m.icon, 'x="-7" y="-7" width="14" height="14"') : `<text class="ico" font-size="12">${esc(m.icon || '•')}</text>`}</g>`; // nur Icon, Name als Tooltip
 }
 const MARKER_ICONS = [['🗑️', 'Mülltonne'], ['💧', 'Getränkebar'], ['🥤', 'Bodyshake'], ['☕', 'Kaffeeautomat'], ['📱', 'Studio-Tablet'],
@@ -378,7 +379,7 @@ const inRect = (m, [x, y, w, h]) => m.x >= x && m.x <= x + w && m.y >= y && m.y 
 const markerZone = m => db.zones.find(z => z.rects.some(r => inRect(m, r)))?.id;
 function mapSvg(cls, inner) { // gemeinsamer Rahmen für Dashboard- und Putzplan-Karte
   const [vx, vy, vw, vh] = fitView(db.zones);
-  return `<svg class="map ${cls}" viewBox="${vx} ${vy} ${vw} ${vh}" role="img" aria-label="Studio-Karte"><defs>${HL_FILTER}</defs>
+  return `<svg class="map ${cls}" viewBox="${vx} ${vy} ${vw} ${vh}" role="group" aria-label="Studio-Karte"><defs>${HL_FILTER}</defs>
     <rect class="floor" x="${vx}" y="${vy}" width="${vw}" height="${vh}" rx="8"/>${inner}</svg>`;
 }
 const markerToggle = () => db.markers.length
@@ -423,7 +424,7 @@ function dashRow(t, isNext = false) {
   const when = t.type === 'intervall' ? `alle ${t.everyDays} Tage` : whenText(t);
   const places = placeNames(t).join(', ');
   const stripe = t.type === 'intervall' ? 'var(--red)' : SHIFTS[s]?.color || 'transparent';
-  return `<div class="task dash ${d ? 'done' : ''} ${ui.pick === t.id ? 'picked' : ''} ${isNext ? 'next' : ''}" data-pick="${t.id}" tabindex="0" style="--stripe:${stripe}">
+  return `<div class="task dash ${d ? 'done' : ''} ${ui.pick === t.id ? 'picked' : ''} ${isNext ? 'next' : ''}" data-pick="${t.id}" tabindex="0" role="button" aria-pressed="${ui.pick === t.id}" style="--stripe:${stripe}">
     <button class="check" data-toggle="${t.id}" aria-label="${d ? 'Wieder öffnen' : 'Erledigt'}">${d ? '✓' : ''}</button>
     ${iconChip(t)}<div class="body"><div class="title">${esc(t.title)}</div>
     <div class="meta">${isNext ? '<span class="badge next-b">▶ Als Nächstes</span>' : ''}${tag}${when ? `<span class="badge">${when}</span>` : ''}${over ? `<span class="badge red">${since > 0 ? `überfällig seit ${since} T.` : 'überfällig'}</span>` : ''}
@@ -467,7 +468,7 @@ const views = {
     return `${dayBanner()}<div class="dash-grid">
       <section><div class="row ed-bar">${head}<span class="grow"></span><span class="meta">${open.length} offen · ${done.length} erledigt</span></div>
         ${progress(shown)}
-        ${imp.length ? `<div class="imp-box"><h3>⚠ Wichtig · Intervall (${imp.length})</h3><div class="list">${imp.map(dashRow).join('')}</div></div>` : ''}
+        ${imp.length ? `<div class="imp-box"><h3>${glyph('⚠')} Wichtig · Intervall (${imp.length})</h3><div class="list">${imp.map(dashRow).join('')}</div></div>` : ''}
         <div class="list">${todo.map(t => dashRow(t, t === next)).join('') || `<div class="empty">${empty}</div>`}</div>
         <details class="done-box" ${ui.doneOpen ? 'open' : ''}><summary>Erledigt (${done.length})</summary>
           <div class="list">${done.map(dashRow).join('') || '<div class="empty">Noch nichts erledigt.</div>'}</div></details></section>
@@ -598,7 +599,7 @@ function dataSection() {
     <p class="meta">Speichert <b>alles</b> in einer Datei: Aufgaben, Häkchen, Layout, Punkte, gespeicherte Layouts, Feiertage, eigene Emojis. Passwörter sind nicht enthalten.</p>
     <div class="data-grid">
       <div><h4>Exportieren</h4><p class="meta">Als Backup am PC/in der Cloud ablegen oder an ein anderes Gerät schicken.</p>
-        <div class="row"><button class="btn small" data-export="download">⬇ Datei herunterladen</button>
+        <div class="row"><button class="btn small" data-export="download">Datei herunterladen</button>
           ${canShare ? '<button class="btn small ghost" data-export="share">Teilen … (Mail, WhatsApp, Drive)</button>' : ''}</div></div>
       <div><h4>Importieren</h4><p class="meta">Backup-Datei auswählen – du siehst vorher, was drin ist.</p>
         <div class="row"><label class="btn small ghost">📂 Datei auswählen<input type="file" id="importFile" accept=".json,application/json" hidden></label>${undo}</div></div>
@@ -957,12 +958,15 @@ function render() {
   document.body.classList.toggle('admin', ui.admin);
   $('#adminBtn').textContent = ui.admin ? 'Admin beenden' : 'Admin';
   // Wer ist angemeldet? Gerät abmelden nur im Admin-Modus, damit an der Theke niemand aus Versehen abmeldet
-  $('#account').innerHTML = cloud.email ? `<span title="Angemeldet">👤 ${esc(cloud.email)}</span>`
+  $('#account').innerHTML = cloud.email ? `<span title="Angemeldet">${glyph('👋')}${esc(cloud.email)}</span>`
     + (ui.admin ? ' <button class="btn small ghost" id="topLogout">Gerät abmelden</button>' : '') : '';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === ui.tab));
   $('#view').classList.toggle('full', ui.tab === 'layout');
   $('#view').classList.toggle('wide', ui.tab === 'dashboard');
+  const f = document.activeElement, fk = $('#view').contains(f) && ['toggle', 'pick', 'zone', 'shift', 'edit'].map(k =>
+    f.dataset?.[k] !== undefined && `[data-${k}="${CSS.escape(f.dataset[k])}"]`).find(Boolean);
   $('#view').innerHTML = views[ui.tab]();
+  if (fk) $('#view').querySelector(fk)?.focus();
 }
 
 // --- Events ---
@@ -998,6 +1002,7 @@ $('#view').addEventListener('keydown', e => {
   const d = e.target.dataset;
   if (d.toggle && e.target.tagName !== 'BUTTON') { e.preventDefault(); toggle(d.toggle); }
   else if (d.pick) { e.preventDefault(); pickTask(d.pick); }
+  else if (d.zone) { e.preventDefault(); e.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); } // Bereich auf der Karte
 });
 // <details> „Erledigt“: Auf/Zu über Neuzeichnen hinweg merken (toggle-Event bubbelt nicht)
 document.addEventListener('toggle', e => { if (e.target.classList?.contains('done-box')) ui.doneOpen = e.target.open; }, true);
