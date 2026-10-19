@@ -683,6 +683,14 @@ function scaleAll(f) {
   }));
   ui.draftM.forEach(m => { m.x = sx(m.x); m.y = sy(m.y); });
 }
+// Ganzes Layout 90° im Uhrzeigersinn drehen; bleibt in der Zeichenfläche (zu groß → wird verkleinert)
+function rotateAll() {
+  const [bx, by, w, h] = layoutBox();
+  const ox = Math.max(0, Math.min(bx, ED.W - h)), oy = Math.max(0, Math.min(by, ED.H - w));
+  ui.draft.forEach(z => z.rects.forEach(r => r.splice(0, 4, ox + by + h - r[1] - r[3], oy + r[0] - bx, r[3], r[2])));
+  ui.draftM.forEach(m => { [m.x, m.y] = [Math.max(0, Math.min(ED.W, ox + by + h - m.y)), Math.max(0, Math.min(ED.H, oy + m.x - bx))]; });
+  scaleAll(1);
+}
 function scalePanel() {
   const [, , w, h] = layoutBox(), max = Math.floor(maxScale() * 100);
   return `<div class="admin-sec ed-form"><h3>Alles skalieren</h3>
@@ -764,6 +772,7 @@ views.layout = () => {
       <button class="btn small ghost" data-ed="add">+ Bereich</button>
       <button class="btn small ghost" data-ed="addMarker">+ Punkt</button>
       <button class="btn small ghost" data-ed="scale">⤢ Alles skalieren</button>
+      <button class="btn small ghost" data-ed="rotate" title="Ganzes Layout um 90° im Uhrzeigersinn drehen">↻ Drehen 90°</button>
       <button class="btn small ghost" data-ed="lib">Layouts (${db.layouts.length})</button>
       <button class="btn small ghost" data-ed="reset">Standard-Layout</button>
       <button class="btn small ghost" data-ed="cancel">Verwerfen</button>
@@ -869,6 +878,7 @@ $('#view').addEventListener('input', e => {
 function edAction(a, val) {
   const z = edZone(), mk = edMarker();
   if (a === 'scale') { ui.scaleMode = !ui.scaleMode; ui.lib = false; ui.sel = null; return redrawEd(); }
+  if (a === 'rotate') { rotateAll(); return redrawEd(); }
   if (a === 'scaleBy' || a === 'scalePct') {
     const f = a === 'scalePct' ? +$('#scalePct').value / 100 : +val;
     if (f > 0) scaleAll(f);
