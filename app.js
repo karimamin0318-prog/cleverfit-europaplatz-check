@@ -24,6 +24,9 @@ const nowHM = () => bizHM(new Date());
 console.assert(bizDay(new Date(2026, 9, 19, 0, 30)) === '2026-10-18' && bizHM(new Date(2026, 9, 19, 0, 5)) === '24:05');
 console.assert(bizDay(new Date(2026, 9, 19, 4, 0)) === '2026-10-19' && bizHM(new Date(2026, 9, 19, 6, 0)) === '06:00');
 const fmtDate = s => s.split('-').reverse().join('.');
+// Eingabe 00:15 gehört zum Arbeitstag davor → 24:15 (Vergleiche/Sortierung); Gegenstück zur Anzeige hm()
+const bizTime = v => v && +v.slice(0, 2) < DAY_START_H ? String(+v.slice(0, 2) + 24) + v.slice(2) : v;
+console.assert(bizTime('00:15') === '24:15' && bizTime('03:59') === '27:59' && bizTime('04:00') === '04:00' && bizTime('') === '');
 const uid = () => Math.random().toString(36).slice(2, 9);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 
@@ -323,6 +326,7 @@ function pickTask(id) {
 // Animationen: einmal abspielen (Klasse neu setzen); bei „weniger Bewegung“ im System aus
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const replay = (el, cls) => { if (!el || reduceMotion()) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+toggle.pending = new Set();
 function toggle(id) {
   const t = db.tasks.find(x => x.id === id);
   const k = t.id + '|' + periodKey(t);
@@ -334,13 +338,14 @@ function toggle(id) {
   };
   const rows = [...document.querySelectorAll(`[data-toggle="${CSS.escape(id)}"]`)].map(b => b.closest('.strip, .task, .sign')).filter(Boolean);
   if (reduceMotion() || !rows.length) return commit();
-  if (rows.some(r => r.matches('.checking, .unchecking'))) return; // läuft schon
+  if (toggle.pending.has(id)) return; // läuft schon (auch wenn die Liste inzwischen neu gezeichnet wurde)
+  toggle.pending.add(id);
   rows.forEach(r => r.classList.add(db.done[k] ? 'unchecking' : 'checking')); // Wieder öffnen = dieselbe Animation rückwärts
   if (!db.done[k] && ui.tab === 'dashboard') { // Karte: Bereiche/Punkte der Aufgabe werden grün
     taskZones(t).forEach(z => $(`.map.board .zone[data-zone="${CSS.escape(z)}"]`)?.classList.add('cleared'));
     taskMarkers(t).forEach(m => $(`.map.board .marker[data-marker="${CSS.escape(m.id)}"]`)?.classList.add('cleared'));
   }
-  setTimeout(commit, 520); // Haken + grüner Strich sichtbar, dann rutscht die Aufgabe weg
+  setTimeout(() => { toggle.pending.delete(id); commit(); }, 520); // Haken + grüner Strich sichtbar, dann rutscht die Aufgabe weg
 }
 const timeOf = t => new Date(t).toTimeString().slice(0, 5);
 
@@ -376,7 +381,7 @@ function svgLabel([x, y, w, h], txt) {
 // rects: [x, y, w, h, Beschriftung?] – überlappende Teile ergeben L-Formen; Name steht auf dem ersten Teil.
 function zoneSvg(z, { done = false, sel = false, piece = -1, hl = false, green = false } = {}) {
   const fill = green ? '#1a9c4a' : done ? pale(fillOf(z)) : fillOf(z);
-  return `<g class="zone ${sel ? 'sel' : ''} ${hl ? 'hl' : ''}" data-zone="${z.id}" tabindex="0" role="button" aria-label="${esc(z.name)}" style="--fill:${fill};--txt:${isLight(fill) ? '#111' : '#fff'}">
+  return `<g class="zone ${sel ? 'sel' : ''} ${hl ? 'hl' : ''} ${green ? 'green' : ''}" data-zone="${z.id}" tabindex="0" role="button" aria-label="${esc(z.name)}" style="--fill:${fill};--txt:${isLight(fill) ? '#111' : '#fff'}">
     <title>${esc(z.name)}</title>${z.rects.map(([x, y, w, h], i) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" data-piece="${i}" class="${i === piece ? 'cur' : ''}"/>`).join('')}
     ${svgLabel(z.rects[0], (done || green ? '✓ ' : '') + (z.label || z.name))}${z.rects.slice(1).filter(r => r[4]).map(r => svgLabel(r, r[4])).join('')}</g>`;
 }
@@ -500,10 +505,10 @@ function timeRange() {
 // Ausgewählte Zeit anwenden ohne Neuzeichnen (läuft bei jedem Ziehen)
 // Überschneidung: ein Fenster, das genau am Anfang endet, zählt nicht
 function applyRange() {
-  const [a, b] = ui.range, tr = $('#tr'); if (!tr) return;
+  const [a, b] = ui.range, tr = $('#tr'), all = a === TR.min && b === TR.max; if (!tr) return;
   Object.assign(tr.querySelector('.tr-win').style, { left: trPct(a) + '%', width: trPct(b) - trPct(a) + '%' });
   let n = 0; const rows = document.querySelectorAll('tr[data-win]');
-  rows.forEach(r => { const [f, e] = r.dataset.win.split(',').map(Number), on = f === e ? f >= a && f < b : e > a && f < b; r.hidden = !on; n += on; });
+  rows.forEach(r => { const [f, e] = r.dataset.win.split(',').map(Number), on = all || (f === e ? f >= a && f < b : e > a && f < b); r.hidden = !on; n += on; });
   tr.querySelectorAll('[data-trshift]').forEach(x => { const [f, e] = SHIFT_TIMES.wt[x.dataset.trshift].map(mins); x.classList.toggle('on', f === a && e === b); });
   tr.querySelector('.tr-label').textContent = `${trHM(a)}–${trHM(b)} · ${n} von ${rows.length}`;
 }
@@ -757,9 +762,9 @@ function importData(mode) {
   }
   ui.importData = null;
   if (mode === 'cancel' || !imp) return render();
-  if (!confirm(mode === 'all' ? 'Alle Daten auf diesem Gerät durch die Datei ersetzen?' : 'Layout und Punkte durch die aus der Datei ersetzen?')) return render();
+  if (!confirm(mode === 'all' ? 'Aufgaben, Layout und Punkte für ALLE Geräte durch die Datei ersetzen? (Heutige Häkchen bleiben erhalten.)' : 'Layout und Punkte für ALLE Geräte durch die aus der Datei ersetzen?')) return render();
   localStorage.setItem(BACKUP_KEY, JSON.stringify(db));
-  const next = mode === 'all' ? { ...imp.data, colorBy: db.colorBy }
+  const next = mode === 'all' ? { ...imp.data, done: { ...imp.data.done, ...db.done }, colorBy: db.colorBy }
     : { ...db, zones: imp.data.zones, markers: imp.data.markers || [], layouts: imp.data.layouts || db.layouts,
         customIcons: imp.data.customIcons || db.customIcons, colorBy: imp.data.colorBy || db.colorBy };
   if (mode === 'layout') { // Putzaufgaben ohne Bereich wären verwaist
@@ -1364,7 +1369,7 @@ function openTask(id) {
   const t = editing || { type: 'schicht', shift: ui.shift, everyDays: 14, startDate: today() };
   form.elements.zoneId.innerHTML = db.zones.map(z => `<option value="${z.id}">${esc(z.name)}</option>`).join('');
   for (const f of ['title', 'type', 'shift', 'time', 'from', 'to', 'everyDays', 'startDate', 'zoneId'])
-    form.elements[f].value = t[f] ?? (f === 'zoneId' ? db.zones[0]?.id ?? '' : f === 'startDate' ? today() : f === 'everyDays' ? 14 : '');
+    form.elements[f].value = ['time', 'from', 'to'].includes(f) && t[f] ? hm(t[f]) : t[f] ?? (f === 'zoneId' ? db.zones[0]?.id ?? '' : f === 'startDate' ? today() : f === 'everyDays' ? 14 : '');
   pick.rules = editing?.markerRules || [];
   Object.assign(pick, { zones: new Set(t.zoneIds || []), markers: new Set(editing ? taskMarkers(editing).map(m => m.id) : []), newMarkers: [] });
   stopPlacing();
@@ -1379,6 +1384,7 @@ function openTask(id) {
 form.onsubmit = e => {
   if (e.submitter?.value === 'cancel') return;
   const f = Object.fromEntries(new FormData(form));
+  for (const k of ['time', 'from', 'to']) f[k] = bizTime(f[k]);
   const t = { id: editing?.id || uid(), type: f.type, title: f.title.trim(), ...(f.icon && { icon: f.icon }), ...(f.type !== 'intervall' && f.days && { days: f.days }) };
   if (f.type === 'schicht') {
     if (f.from && f.to && f.from >= f.to) { e.preventDefault(); return alert('„von" muss vor „bis" liegen.'); }
@@ -1421,27 +1427,35 @@ const isAdminEmail = async (client, email) =>
   !!(await client.from('admins').select('email').eq('email', email.toLowerCase()).maybeSingle()).data;
 
 let syncing = Promise.resolve();
-const sync = () => { syncing = syncing.then(pushChanges).catch(e => cloudBar('⚠ Nicht gespeichert – keine Verbindung zur Datenbank. Wird beim nächsten Speichern erneut versucht. (' + (e.message || e) + ')')); };
+const sync = () => { syncing = syncing.then(pushChanges).catch(e => cloudBar('⚠ Noch nicht gespeichert – keine Verbindung zur Datenbank. Wird jede Minute automatisch erneut versucht. (' + (e.message || e) + ')')); };
 async function pushChanges() {
   if (!cloud.ready) return;
-  const cfg = configJson();
-  if (cfg !== cloud.config && cloud.admin) { // Nicht-Admins ändern keine Aufgaben; Ansichts-Einstellungen bleiben lokal
-    const { error } = await cloud.admin.from('studio').upsert({ id: STUDIO_ID, data: JSON.parse(cfg), updated_at: new Date().toISOString() });
-    if (error) throw error;
-    cloud.config = cfg;
-  }
   const now = doneRows();
   const add = Object.entries(now).filter(([k, v]) => cloud.done[k] !== v), del = Object.keys(cloud.done).filter(k => !(k in now));
   for (const part of chunks(add)) { const { error } = await sb.from('done').upsert(part.map(([key, done_at]) => ({ key, done_at }))); if (error) throw error; }
   for (const part of chunks(del)) { const { error } = await sb.from('done').delete().in('key', part); if (error) throw error; }
   cloud.done = now;
+  const cfg = configJson();
+  if (cfg !== cloud.config && cloud.admin) { // Nicht-Admins ändern keine Aufgaben; Ansichts-Einstellungen bleiben lokal
+    // Ganzes Dokument wird ersetzt: hat ein anderes Gerät seit unserem Laden gespeichert, nicht überschreiben
+    const cur = await cloud.admin.from('studio').select('updated_at').eq('id', STUDIO_ID).maybeSingle();
+    if (cur.error) throw cur.error;
+    if (cur.data && cloud.updatedAt && Date.parse(cur.data.updated_at) !== cloud.updatedAt) {
+      await cloudLoad(); if (quiet()) render();
+      return cloudBar('⚠ Deine letzte Änderung an Aufgaben/Layout wurde nicht gespeichert: ein anderes Gerät hat gleichzeitig geändert. Neuer Stand ist geladen – bitte nochmal machen.');
+    }
+    const at = new Date().toISOString();
+    const { error } = await cloud.admin.from('studio').upsert({ id: STUDIO_ID, data: JSON.parse(cfg), updated_at: at });
+    if (error) throw error;
+    cloud.config = cfg; cloud.updatedAt = Date.parse(at);
+  }
   cloudBar('');
 }
 // Lädt Aufgaben + Häkchen der letzten 2 Tage (+ Intervall-Häkchen). Ältere Häkchen bleiben in der Datenbank, werden aber nicht gebraucht.
 async function cloudLoad() {
   const since = new Date(Date.now() - 2 * 864e5).toISOString();
   const [st, recent, intervals, backups] = await Promise.all([
-    sb.from('studio').select('data').eq('id', STUDIO_ID).maybeSingle(),
+    sb.from('studio').select('data,updated_at').eq('id', STUDIO_ID).maybeSingle(),
     sb.from('done').select('key,done_at').gte('done_at', since).limit(5000),
     sb.from('done').select('key,done_at').like('key', '%|p%').limit(5000),
     sb.from('done').select('key,done_at').like('key', 'backup|%').limit(500),
@@ -1456,6 +1470,7 @@ async function cloudLoad() {
     if (r.key.startsWith('mittel|')) db.mittelDays[r.key.slice(7)] = r.done_at; else db.done[r.key] = r.done_at;
   normalize();
   cloud.config = st.data ? configJson() : ''; // leer → erster Speichervorgang lädt alles hoch
+  cloud.updatedAt = st.data ? Date.parse(st.data.updated_at) : null;
   cloud.done = doneRows();
   localStorage.setItem(KEY, JSON.stringify(db));
 }
@@ -1465,8 +1480,11 @@ let refreshTimer;
 function refresh() {
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(async () => {
-    await syncing;
-    try { await cloudLoad(); if (quiet()) render(); } catch (e) { cloudBar('⚠ Keine Verbindung zur Datenbank – zeige den letzten Stand.'); }
+    const pushed = syncing.then(pushChanges); syncing = pushed.catch(() => {});
+    try {
+      await pushed; // noch nicht Hochgeladenes zuerst – schlägt das fehl, nicht neu laden (würde es überschreiben)
+      await cloudLoad(); if (quiet()) render();
+    } catch (e) { cloudBar('⚠ Keine Verbindung zur Datenbank – Änderungen bleiben auf diesem Gerät und werden automatisch nachgeschickt.'); }
   }, 300);
 }
 

@@ -110,9 +110,6 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .badge.red { background: var(--red); color: #fff; }
 .badge.green { background: var(--ok); color: #fff; }
 .empty { color: var(--muted); padding: 20px; text-align: center; background: var(--card); font: 800 16px var(--cond); letter-spacing: 1px; text-transform: uppercase; }
-.tag { display: inline-block; font: 800 12px var(--cond); letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; margin-right: 6px; background: color-mix(in srgb, var(--c) 18%, var(--card)); color: var(--black); border-left: 4px solid var(--c); }
-.tag.imp { background: var(--red); color: #fff; border: 0; }
-.place { font-size: 13px; color: var(--muted); }
 
 /* --- Karte --- */
 .plan { display: grid; gap: 20px; }
@@ -218,6 +215,8 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .map.board .floor { fill: none; }
 .map.board .zone rect { fill: var(--zone); }
 .map.board .zone text { fill: var(--zone-ink); }
+.map.board .zone.green rect { fill: var(--ok); }
+.map.board .zone.green text { fill: #fff; }
 .map.board .zone.hl rect { fill: var(--red); }
 .map.board .zone.hl, .map.board .zone.hl:hover { filter: none; }
 .map.board .zone.hl text { fill: #fff; }

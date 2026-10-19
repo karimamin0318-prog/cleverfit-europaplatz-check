@@ -43,7 +43,8 @@ create policy "done abhaken" on public.done for insert to authenticated with che
 create policy "done aendern" on public.done for update to authenticated using (true) with check (true);
 create policy "done loeschen" on public.done for delete to authenticated using (true);
 
-insert into public.admins (email) values ('karimamin0318@gmail.com'), ('philipp.schlattinger@gmx.at') on conflict do nothing;
+-- Admins NICHT hier eintragen (Repo ist öffentlich): im Supabase-Dashboard → Table Editor → admins, oder im SQL Editor:
+-- insert into public.admins (email) values ('name@example.com') on conflict do nothing;
 
 -- Live-Abgleich zwischen Geräten
 do $$ begin
