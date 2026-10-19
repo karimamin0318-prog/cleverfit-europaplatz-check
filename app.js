@@ -694,6 +694,13 @@ const UI_ICON = Object.fromEntries(Object.entries({
   file: '<path d="M6 3.5h7.5l4.5 4.5v12.5H6z"/><path d="M13.5 3.5V8H18"/>',
   share: '<circle cx="17.5" cy="6" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="m8.7 10.8 6.6-3.6M8.7 13.2l6.6 3.6"/>',
   undo: '<path d="M9 5 4.5 9.5 9 14"/><path d="M4.5 9.5H14a5.5 5.5 0 0 1 0 11h-3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  pin: '<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M12 9.5v5M9.5 12h5"/>',
+  scale: '<path d="M4 9.5V4h5.5M20 14.5V20h-5.5M4 4l6.5 6.5M20 20l-6.5-6.5"/>',
+  rotate: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3L20 9.5M20 4v5.5h-5.5"/>',
+  stack: '<path d="M12 4 3.5 8.5 12 13l8.5-4.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>',
+  reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4 9.5M4 4v5.5h5.5"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
 }).map(([k, p]) => [k, `<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`]));
 function dataSection() {
   const imp = ui.importData, fmt = iso => iso ? new Date(iso).toLocaleString('de-AT', { dateStyle: 'medium', timeStyle: 'short' }) : 'unbekannt';
@@ -876,19 +883,19 @@ function edPanel() {
 views.layout = () => {
   ui.draft ??= structuredClone(db.zones);
   ui.draftM ??= structuredClone(db.markers);
-  return `<div class="row ed-bar"><h2>Layout-Editor</h2>
-      <label class="chk"><input type="checkbox" data-opt="snap" ${ui.snap ? 'checked' : ''}> Einrasten</label>
-      <label class="chk">Raster <select data-opt="grid">${[5, 10, 20].map(g => `<option ${g === ui.grid ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
-      <label class="chk"><input type="checkbox" data-opt="pieceMode" ${ui.pieceMode ? 'checked' : ''}> Teile einzeln ziehen</label>
-      <span class="grow"></span>${colorToggle()}
-      <button class="btn small ghost" data-ed="add">+ Bereich</button>
-      <button class="btn small ghost" data-ed="addMarker">+ Punkt</button>
-      <button class="btn small ghost" data-ed="scale">⤢ Alles skalieren</button>
-      <button class="btn small ghost" data-ed="rotate" title="Ganzes Layout um 90° im Uhrzeigersinn drehen">↻ Drehen 90°</button>
-      <button class="btn small ghost" data-ed="lib">Layouts (${db.layouts.length})</button>
-      <button class="btn small ghost" data-ed="reset">Standard-Layout</button>
-      <button class="btn small ghost" data-ed="cancel">Verwerfen</button>
-      <button class="btn small" data-ed="save">Speichern</button></div>
+  const tool = (ed, icon, label, on = false, title = '') => `<button class="btn small ghost ${on ? 'on' : ''}" data-ed="${ed}" ${title ? `title="${title}"` : ''}>${UI_ICON[icon]}${label}</button>`;
+  const sw = (opt, label) => `<label class="sw"><input type="checkbox" data-opt="${opt}" ${ui[opt] ? 'checked' : ''}><i></i>${label}</label>`;
+  // Kopf: Titel + Speichern/Verwerfen; darunter Werkzeuge in beschrifteten Gruppen (Hinzufügen → Layout → Raster → Farbe); Vorlagen oben neben Speichern
+  return `<div class="ed-head"><h2>Layout-Editor</h2><span class="ed-note">Änderungen gelten erst nach „Speichern“</span><span class="grow"></span>
+      <div class="ed-files">${tool('lib', 'stack', `Layouts (${db.layouts.length})`, ui.lib)}${tool('reset', 'reset', 'Standard-Layout')}</div>
+      <button class="btn ghost" data-ed="cancel">Verwerfen</button><button class="btn" data-ed="save">${UI_ICON.check}Speichern</button></div>
+    <div class="ed-tools">
+      <div class="tgrp"><span class="tgrp-k">Hinzufügen</span><div class="tgrp-b">${tool('add', 'plus', 'Bereich')}${tool('addMarker', 'pin', 'Punkt')}</div></div>
+      <div class="tgrp"><span class="tgrp-k">Ganzes Layout</span><div class="tgrp-b">${tool('scale', 'scale', 'Skalieren', ui.scaleMode)}${tool('rotate', 'rotate', 'Drehen 90°', false, 'Ganzes Layout um 90° im Uhrzeigersinn drehen')}</div></div>
+      <div class="tgrp"><span class="tgrp-k">Raster</span><div class="tgrp-b">${sw('snap', 'Einrasten')}
+        <select data-opt="grid" aria-label="Rastergröße">${[5, 10, 20].map(g => `<option value="${g}" ${g === ui.grid ? 'selected' : ''}>${g} px</option>`).join('')}</select>${sw('pieceMode', 'Teile einzeln')}</div></div>
+      <div class="tgrp"><span class="tgrp-k">Farbe</span><div class="tgrp-b">${colorToggle()}</div></div>
+    </div>
     <div class="plan ed-plan"><div class="map-wrap"><svg id="edSvg" class="map editor" viewBox="-10 -10 ${ED.W + 20} ${ED.H + 20}">
       <defs><pattern id="grid" width="${ui.grid}" height="${ui.grid}" patternUnits="userSpaceOnUse">
         <path class="grid-ln" d="M${ui.grid} 0H0V${ui.grid}" fill="none" stroke-width=".6"/></pattern></defs>
@@ -989,7 +996,7 @@ $('#view').addEventListener('input', e => {
 
 function edAction(a, val) {
   const z = edZone(), mk = edMarker();
-  if (a === 'scale') { ui.scaleMode = !ui.scaleMode; ui.lib = false; ui.sel = null; return redrawEd(); }
+  if (a === 'scale') { ui.scaleMode = !ui.scaleMode; ui.lib = false; ui.sel = null; return render(); } // render: Knopf zeigt „aktiv“
   if (a === 'rotate') { rotateAll(); return redrawEd(); }
   if (a === 'scaleBy' || a === 'scalePct') {
     const f = a === 'scalePct' ? +$('#scalePct').value / 100 : +val;

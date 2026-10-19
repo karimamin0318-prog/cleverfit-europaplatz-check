@@ -258,7 +258,7 @@ main.full .ed-bar { margin-bottom: 8px; }
 @media (min-width: 800px) {
   .plan.ed-plan { grid-template-columns: minmax(0, 1fr) 320px; }
   .ed-plan .map-wrap { padding: 8px; }
-  .ed-plan #edSvg { height: calc(100vh - 150px); min-height: 420px; } /* so hoch wie möglich, Seitenverhältnis bleibt */
+  .ed-plan #edSvg { height: calc(100vh - 225px); min-height: 420px; } /* so hoch wie möglich, Seitenverhältnis bleibt */
 }
 
 .admin-sec { background: var(--card); padding: 18px 20px; margin-bottom: 16px; }
@@ -302,11 +302,31 @@ main.full .ed-bar { margin-bottom: 8px; }
 @media (max-width: 800px) { .tasks-head { flex-direction: column; align-items: stretch; gap: 10px; } }
 
 /* Layout-Editor: Werkzeugleiste als Tafel */
-main.full > .ed-bar { background: var(--card); padding: 10px 14px; gap: 8px 10px; }
-main.full > .ed-bar h2 { font-size: 22px; margin-right: 14px; }
-.ed-bar .chk { font: 800 13px var(--cond); letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
-.ed-bar .chk input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); }
-.ed-bar .chk select { min-height: 32px; background: var(--card); color: inherit; }
+.ed-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ed-head h2 { margin: 0 14px 0 0; }
+.ed-note { font-size: 13px; color: var(--muted); }
+.ed-head .btn { min-height: 40px; display: inline-flex; align-items: center; }
+.ed-tools { display: flex; flex-wrap: wrap; background: var(--card); margin-bottom: 12px; }
+.tgrp { display: flex; flex-direction: column; gap: 7px; padding: 10px 18px 12px; border-right: 1px solid var(--line); }
+.tgrp:last-child { border-right: 0; }
+.ed-files { display: flex; gap: 6px; padding-right: 12px; margin-right: 4px; border-right: 1px solid var(--line); }
+.ed-files .btn { min-height: 40px; display: inline-flex; align-items: center; border-color: var(--line); color: var(--black); }
+.ed-files .btn.on { background: var(--black); color: var(--card); border-color: var(--black); }
+.tgrp-k { font: 800 11px var(--cond); letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); }
+.tgrp-b { display: flex; align-items: center; gap: 6px; min-height: 34px; }
+.tgrp-b .btn { min-height: 34px; display: inline-flex; align-items: center; border-color: var(--line); color: var(--black); }
+.tgrp-b .btn:hover { border-color: var(--black); }
+.tgrp-b .btn.on { background: var(--black); color: var(--card); border-color: var(--black); }
+.tgrp-b select { min-height: 34px; padding: 0 8px; background: var(--card); color: inherit; border: 1px solid var(--line); font: 800 13px var(--cond); letter-spacing: 1px; }
+.tgrp-b .seg { margin: 0; }
+/* Schalter statt Häkchen */
+.sw { display: inline-flex; align-items: center; gap: 8px; padding: 0 6px; font: 800 13px var(--cond); letter-spacing: 1px; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+.sw input { position: absolute; opacity: 0; pointer-events: none; }
+.sw i { position: relative; width: 32px; height: 18px; background: var(--track); transition: background-color var(--t-fast); }
+.sw i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 12px; height: 12px; background: var(--muted); transition: transform var(--t) var(--ease), background-color var(--t-fast); }
+.sw input:checked + i { background: var(--red); }
+.sw input:checked + i::after { transform: translateX(14px); background: #fff; }
+.sw input:focus-visible + i { outline: 2px solid var(--red); outline-offset: 2px; }
 .editor .grid-ln { stroke: var(--line); }
 .ed-plan .map-wrap { background: var(--card); }
 .admin-sec input, .admin-sec select, dialog input, dialog select, .ed-form input, .ed-form select, .chk select, .login-card input { background: var(--card); color: inherit; border-radius: 0; }
