@@ -210,6 +210,14 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .map.board .zone.hl text { fill: #fff; }
 .map.board.focus .zone:not(.hl) { opacity: .45; }
 
+/* --- Putzplan: Legende | Karte | Bereich, alles in einem Bildschirm --- */
+.pp { flex: 1; min-height: 0; display: grid; gap: 16px; grid-template-columns: 210px minmax(0, 1fr) minmax(280px, 360px); }
+.pp-legend .legend { flex-direction: column; gap: 12px; margin: 14px 0 0; font: 800 15px var(--cond); letter-spacing: 1px; text-transform: uppercase; }
+.legend span::before { width: 14px; height: 14px; vertical-align: -2px; }
+.pp-map { padding: 14px; }
+.pp-detail { min-height: 0; overflow-y: auto; }
+.pp-detail h2 { margin-top: 0; }
+
 /* --- Verwaltung, Editor, Dialoge --- */
 .ed-bar { align-items: center; margin-bottom: 12px; }
 .ed-bar h2 { margin: 0 8px 0 0; }
@@ -240,10 +248,33 @@ main.full .ed-bar { margin-bottom: 8px; }
   .ed-plan #edSvg { height: calc(100vh - 150px); min-height: 420px; } /* so hoch wie möglich, Seitenverhältnis bleibt */
 }
 
-.admin-sec { background: var(--card); padding: 18px; margin-bottom: 16px; }
-.admin-sec table { width: 100%; border-collapse: collapse; }
-.admin-sec td { padding: 8px 4px; border-top: 1px solid var(--line); vertical-align: middle; }
+.admin-sec { background: var(--card); padding: 18px 20px; margin-bottom: 16px; }
+.admin-sec > h3, .admin-sec > .row > h3 { margin: 0 0 12px; padding-left: 12px; border-left: 5px solid var(--red); line-height: 1.1; }
+.admin-sec > .row { margin-bottom: 4px; }
+.admin-sec > .row > h3 { margin: 0; }
+.admin-sec table { width: calc(100% + 40px); margin: 0 -20px; border-collapse: collapse; }
+.admin-sec td { padding: 11px 20px; border-top: 1px solid var(--line); vertical-align: middle; }
+.admin-sec tr[style] td:first-child { box-shadow: inset 6px 0 var(--stripe); padding-left: 26px; }
+.admin-sec tr:hover td { background: var(--card2); }
+.admin-sec td > b { font: 800 18px var(--cond); letter-spacing: .4px; text-transform: uppercase; }
+.admin-sec td .meta { margin-top: 3px; }
 .admin-sec td:last-child { text-align: right; white-space: nowrap; }
+.admin-sec td .btn.ghost { border-color: var(--line); color: var(--black); }
+.admin-sec td .btn.ghost:hover { border-color: var(--black); }
+.admin-sec td .btn.ghost[data-del]:hover { border-color: var(--red); color: var(--red-text); }
+.admin-sec input:not([type=checkbox]):not([type=color]), .admin-sec select { min-height: 40px; }
+.admin-sec td input[data-zname] { width: 100%; font: 800 17px var(--cond); letter-spacing: .4px; text-transform: uppercase; }
+.admin-sec td select { width: 100%; }
+.admin-sec label.btn { display: inline-flex; align-items: center; }
+.ed-help li::marker { color: var(--red); }
+/* Layout-Editor: Werkzeugleiste als Tafel */
+main.full > .ed-bar { background: var(--card); padding: 10px 14px; gap: 8px 10px; }
+main.full > .ed-bar h2 { font-size: 22px; margin-right: 14px; }
+.ed-bar .chk { font: 800 13px var(--cond); letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.ed-bar .chk input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); }
+.ed-bar .chk select { min-height: 32px; background: var(--card); color: inherit; }
+.editor .grid-ln { stroke: var(--line); }
+.ed-plan .map-wrap { background: var(--card); }
 .admin-sec input, .admin-sec select, dialog input, dialog select, .ed-form input, .ed-form select, .chk select, .login-card input { background: var(--card); color: inherit; border-radius: 0; }
 .admin-sec input, .admin-sec select { padding: 7px 8px; border: 1px solid var(--line); }
 
@@ -348,6 +379,7 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
   .board { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "sign" "stats" "map" "list"; }
   .b-map { height: min(62vh, 760px); }
   .b-list { overflow: visible; }
+  .pp { grid-template-columns: minmax(0, 1fr); } .pp-map { height: 62vh; } .pp-legend .legend { flex-direction: row; flex-wrap: wrap; } .pp-detail { overflow: visible; }
   .sg-ico { width: 84px; min-height: 84px; } .sg-ico .glyph { width: 44px; height: 44px; }
 }
 @media (max-width: 640px) {

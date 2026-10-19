@@ -548,7 +548,9 @@ const views = {
       detail = `<h2>${esc(z.name)} ${s ? `<span class="badge" style="background:${s.color};color:${isLight(s.color) ? '#111' : '#fff'}">${s.name}</span>` : ''}</h2>
         ${progress(list)}<div class="list">${list.map(t => taskRow(t, whenText(t) ? `<span class="badge">${whenText(t)}</span>` : '')).join('') || '<div class="empty">Heute keine Aufgaben hier.</div>'}</div>`;
     }
-    return `<div class="row ed-bar"><h2>Putzplan</h2><span class="grow"></span>${markerToggle()}${colorToggle()}</div><div class="plan"><div><div class="map-wrap">${map}</div><div class="legend">${legend}</div></div><div>${detail}</div></div>`;
+    return `<div class="row ed-bar"><h2>Putzplan</h2><span class="grow"></span>${markerToggle()}${colorToggle()}</div>
+      <div class="pp"><aside class="pane pp-legend"><span class="pane-k">Legende</span><div class="legend">${legend}</div></aside>
+        <div class="pane pp-map"><div class="map-fill">${map}</div></div><div class="pp-detail">${detail}</div></div>`;
   },
 
   admin() {
@@ -561,7 +563,8 @@ const views = {
       return n.length ? ' · Ort: ' + esc(n.join(', ')) : '';
     };
     const order = { schicht: 0, intervall: 1, zone: 2 };
-    const tasks = [...db.tasks].sort((a, b) => order[a.type] - order[b.type]).map(t => `<tr><td>${iconChip(t)}<b>${esc(t.title)}</b><div class="meta">${where(t)}${ortOf(t)}</div></td>
+    const stripeOf = t => t.type === 'intervall' ? 'var(--red)' : SHIFTS[taskShift(t)]?.color || 'transparent';
+    const tasks = [...db.tasks].sort((a, b) => order[a.type] - order[b.type]).map(t => `<tr style="--stripe:${stripeOf(t)}"><td>${iconChip(t)}<b>${esc(t.title)}</b><div class="meta">${where(t)}${ortOf(t)}</div></td>
       <td><button class="btn small ghost" data-edit="${t.id}">Bearbeiten</button> <button class="btn small ghost" data-del="${t.id}">Löschen</button></td></tr>`).join('');
     const zones = db.zones.map(z => `<tr><td><input data-zname="${z.id}" value="${esc(z.name)}"></td>
       <td><select data-zshift="${z.id}">${shiftOpts(z.shift)}</select></td></tr>`).join('');
@@ -808,7 +811,7 @@ views.layout = () => {
       <button class="btn small" data-ed="save">Speichern</button></div>
     <div class="plan ed-plan"><div class="map-wrap"><svg id="edSvg" class="map editor" viewBox="-10 -10 ${ED.W + 20} ${ED.H + 20}">
       <defs><pattern id="grid" width="${ui.grid}" height="${ui.grid}" patternUnits="userSpaceOnUse">
-        <path d="M${ui.grid} 0H0V${ui.grid}" fill="none" stroke="#d0d0d0" stroke-width=".6"/></pattern></defs>
+        <path class="grid-ln" d="M${ui.grid} 0H0V${ui.grid}" fill="none" stroke-width=".6"/></pattern></defs>
       <rect class="floor" x="0" y="0" width="${ED.W}" height="${ED.H}"/>
       ${ui.snap ? `<rect x="0" y="0" width="${ED.W}" height="${ED.H}" fill="url(#grid)"/>` : ''}
       <g id="edLayer">${edLayer()}</g></svg></div><div id="edPanel">${edPanel()}</div></div>`;
@@ -1001,7 +1004,7 @@ function render() {
     + (ui.admin ? ' <button class="btn small ghost" id="topLogout">Gerät abmelden</button>' : '') : '';
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === ui.tab));
   $('#view').classList.toggle('full', ui.tab === 'layout');
-  $('#view').classList.toggle('wide', ui.tab === 'dashboard');
+  $('#view').classList.toggle('wide', ui.tab === 'dashboard' || ui.tab === 'putzplan'); // passt in den Bildschirm
   const f = document.activeElement, fk = $('#view').contains(f) && ['toggle', 'pick', 'zone', 'shift', 'edit'].map(k =>
     f.dataset?.[k] !== undefined && `[data-${k}="${CSS.escape(f.dataset[k])}"]`).find(Boolean);
   $('#view').innerHTML = views[ui.tab]();
