@@ -448,6 +448,18 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .sign.checking { background: var(--ok); }
 .sign.checking .sg-done { background: #fff; color: var(--ok); }
 
+/* Dashboard-Karte: erledigter Ort wird grün, danach blendet der nächste Ort rot ein */
+.map.board .zone rect { transition: fill var(--t) var(--ease); }
+.map.board .zone.cleared { animation: none; opacity: 1; }
+.map.board .zone.cleared rect { fill: var(--ok); }
+.map.board .zone.cleared text { fill: #fff; }
+.map .marker.cleared .plate { fill: var(--ok); stroke: var(--ok); animation: pop var(--t) var(--ease); }
+.map .marker.cleared .glyph { color: #fff; }
+.map .marker.cleared .pulse { display: none; }
+@keyframes hl-in { from { fill: var(--zone); } }
+.map.board.hl-in .zone.hl rect { animation: hl-in var(--t-slow) var(--ease); }
+.map.board.hl-in .marker.hl > :not(.hit, .pulse) { animation: pop var(--t) var(--ease) both; }
+
 /* Punkte ein-/ausblenden: Schilder ploppen auf bzw. schrumpfen weg */
 .map .marker > :not(.hit) { transform-box: fill-box; transform-origin: center; }
 .map.m-in .marker > :not(.hit, .pulse) { animation: pop var(--t) var(--ease) both; }

@@ -330,11 +330,16 @@ function toggle(id) {
     if (db.done[k]) delete db.done[k]; else db.done[k] = new Date().toISOString();
     ui.pick = null; ui.hideMap = false; // nach dem Abhaken weiter mit der nächsten Aufgabe
     save(); render();
+    if (ui.tab === 'dashboard') replay($('.map.board'), 'hl-in'); // nächster Ort wird rot eingeblendet
   };
   const rows = [...document.querySelectorAll(`[data-toggle="${CSS.escape(id)}"]`)].map(b => b.closest('.strip, .task, .sign')).filter(Boolean);
   if (reduceMotion() || !rows.length) return commit();
   if (rows.some(r => r.matches('.checking, .unchecking'))) return; // läuft schon
   rows.forEach(r => r.classList.add(db.done[k] ? 'unchecking' : 'checking')); // Wieder öffnen = dieselbe Animation rückwärts
+  if (!db.done[k] && ui.tab === 'dashboard') { // Karte: Bereiche/Punkte der Aufgabe werden grün
+    taskZones(t).forEach(z => $(`.map.board .zone[data-zone="${CSS.escape(z)}"]`)?.classList.add('cleared'));
+    taskMarkers(t).forEach(m => $(`.map.board .marker[data-marker="${CSS.escape(m.id)}"]`)?.classList.add('cleared'));
+  }
   setTimeout(commit, 520); // Haken + grüner Strich sichtbar, dann rutscht die Aufgabe weg
 }
 const timeOf = t => new Date(t).toTimeString().slice(0, 5);
