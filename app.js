@@ -1076,7 +1076,10 @@ function setTheme(t) {
 }
 setTheme(document.documentElement.dataset.theme || 'dark');
 // Seitenleiste ein-/ausklappen, pro Gerät gemerkt
-$('#sideToggle').onclick = () => { const m = document.documentElement.classList.toggle('side-mini'); try { localStorage.setItem('cf-side', m ? 'mini' : 'full'); } catch {} };
+const setSide = mini => { document.documentElement.classList.toggle('side-mini', mini); $('#brandBtn').tabIndex = mini ? 0 : -1; try { localStorage.setItem('cf-side', mini ? 'mini' : 'full'); } catch {} };
+$('#sideToggle').onclick = () => setSide(true);
+$('#brandBtn').onclick = () => { if (document.documentElement.classList.contains('side-mini')) setSide(false); }; // eingeklappt: Logo klappt wieder aus
+$('#brandBtn').tabIndex = document.documentElement.classList.contains('side-mini') ? 0 : -1;
 document.querySelector('.theme-seg').onclick = e => { const b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); };
 
 $('#adminBtn').onclick = () => {

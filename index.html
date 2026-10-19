@@ -17,8 +17,10 @@
 </head>
 <body>
   <aside class="side">
-    <button id="sideToggle" class="side-toggle" aria-label="Seitenleiste ein-/ausklappen" title="Seitenleiste ein-/ausklappen"><svg class="glyph" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="brand"><span class="logo">clever<b>fit</b></span><span class="loc">Europaplatz</span></div>
+    <div class="side-head">
+      <button id="brandBtn" class="brand" tabindex="-1" title="Seitenleiste ausklappen"><span class="logo"><span class="lf">clever<b>fit</b></span><span class="lm">c<b>f</b></span></span><span class="loc">Europaplatz</span></button>
+      <button id="sideToggle" class="side-toggle" aria-label="Seitenleiste einklappen" title="Seitenleiste einklappen"><svg class="glyph" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    </div>
     <nav class="tabs" id="tabs" aria-label="Bereiche">
       <button data-tab="dashboard" class="active"><svg class="glyph" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg><span>Dashboard</span></button>
       <button data-tab="heute"><svg class="glyph" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Schichten</span></button>
