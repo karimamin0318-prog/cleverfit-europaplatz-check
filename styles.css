@@ -47,8 +47,9 @@ button, input, select { font: inherit; }
 .logo b { color: var(--red); }
 .loc { font: 800 12px var(--cond); letter-spacing: 3px; text-transform: uppercase; color: #8c8c8c; }
 .tabs { display: flex; flex-direction: column; gap: 3px; }
-.tabs button { display: flex; align-items: center; gap: 13px; min-height: 44px; padding: 0 12px; background: none; border: 0; border-left: 4px solid transparent; color: #8c8c8c; font: 800 16px var(--cond); letter-spacing: 1.4px; text-transform: uppercase; text-align: left; cursor: pointer; }
-.tabs button .glyph { width: 20px; height: 20px; flex: none; stroke-linecap: square; stroke-linejoin: miter; }
+.tabs button { transition: padding .3s cubic-bezier(.2, .8, .2, 1), gap .3s; display: flex; align-items: center; gap: 13px; min-height: 44px; padding: 0 12px; background: none; border: 0; border-left: 4px solid transparent; color: #8c8c8c; font: 800 16px var(--cond); letter-spacing: 1.4px; text-transform: uppercase; text-align: left; cursor: pointer; }
+.tabs button .glyph { width: 22px; height: 22px; flex: none; stroke-width: 1.8; }
+.theme-seg .glyph, .tabs button .glyph { stroke-linecap: round; stroke-linejoin: round; }
 .tabs button:hover { color: #fff; }
 .tabs button.active { color: #fff; background: #1c1c1c; border-left-color: var(--red); }
 .nav-sep { font: 800 11px var(--cond); letter-spacing: 3px; text-transform: uppercase; color: #808080; padding: 18px 12px 6px; margin-top: 12px; border-top: 1px solid #222; }
@@ -366,7 +367,8 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 @media (min-width: 1101px) { .page:has(main.wide) { height: 100vh; } } /* Dashboard passt in den Bildschirm, die Liste scrollt innen */
 /* Eingeklappte Seitenleiste: nur Symbole (Knopf oben, Wahl pro Gerät gemerkt; Tablet startet eingeklappt) */
 .side { transition: width .3s cubic-bezier(.2, .8, .2, 1), padding .3s cubic-bezier(.2, .8, .2, 1); overflow-x: hidden; }
-.side :is(.loc, .tabs button span, .theme-seg span, .account, .clock span, .nav-sep) { transition: opacity .18s; white-space: nowrap; }
+.side :is(.loc, .tabs button span, .theme-seg span, .account, .clock span, .nav-sep) { transition: opacity .18s, max-width .3s; white-space: nowrap; }
+.side :is(.tabs button span, .theme-seg span) { max-width: 160px; overflow: hidden; }
 .side-mini .side { width: 76px; padding: 16px 8px 12px; }
 .side-mini .side-head { padding: 0 0 22px; justify-content: center; }
 .side-mini .side-toggle { position: absolute; opacity: 0; pointer-events: none; }
@@ -380,7 +382,11 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .side-mini .theme-seg { grid-template-columns: 1fr; } .side-mini .theme-seg button { min-height: 42px; }
 .side-mini .side .admin-btn { font-size: 0; padding: 0; min-height: 42px; }
 .side-mini .side .admin-btn::before { content: 'Admin'; font-size: 12px; }
-.side-mini .side .tabs button { gap: 0; }
+/* eingeklappt: Beschriftungen auf Breite 0 → Symbole exakt mittig (Leiste 76 px, Knopf 60 px inkl. 4 px Markierung) */
+.side-mini :is(.tabs button span, .theme-seg span) { max-width: 0; }
+.side-mini .side .tabs button { gap: 0; padding: 0 0 0 15px; }
+.side-mini .theme-seg button { gap: 0; }
+.side-mini .side .admin-btn { display: grid; place-items: center; width: 100%; }
 @media (prefers-reduced-motion: reduce) { .side, .side * { transition: none !important; } }
 @media (max-width: 1100px) {
   .hourbar { grid-template-columns: minmax(0, 1fr) auto; gap: 12px 20px; }
