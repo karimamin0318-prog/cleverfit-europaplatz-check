@@ -414,6 +414,19 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .list:is(.from-right, .from-left) > :nth-child(2) { animation-delay: 25ms; }
 .list:is(.from-right, .from-left) > :nth-child(3) { animation-delay: 50ms; }
 .list:is(.from-right, .from-left) > :nth-child(n+4) { animation-delay: 75ms; }
+/* Putzplan: Bereich antippen – Kopf gleitet herein, Aufgaben poppen nacheinander auf */
+@keyframes pop-rise { from { opacity: 0; transform: translateY(10px) scale(.96); } }
+.pp-detail.enter > * { animation: rise var(--t) var(--ease) both; }
+.pp-detail.enter .list > * { animation: pop-rise var(--t) var(--ease) both; animation-delay: calc(60ms + var(--i, 0) * 35ms); }
+.pp-detail.enter .list > :nth-child(2) { --i: 1; }
+.pp-detail.enter .list > :nth-child(3) { --i: 2; }
+.pp-detail.enter .list > :nth-child(4) { --i: 3; }
+.pp-detail.enter .list > :nth-child(5) { --i: 4; }
+.pp-detail.enter .list > :nth-child(6) { --i: 5; }
+.pp-detail.enter .list > :nth-child(7) { --i: 6; }
+.pp-detail.enter .list > :nth-child(8) { --i: 7; }
+.pp-detail.enter .list > :nth-child(9) { --i: 8; }
+.pp-detail.enter .list > :nth-child(n+10) { --i: 9; }
 .tabs button, .seg button { transition: color var(--t-fast), background-color var(--t-fast), border-color var(--t) var(--ease); }
 
 /* Abhaken: Kästchen wird grün mit Haken, grüner Strich zieht durch den Titel, Zeile färbt sich */

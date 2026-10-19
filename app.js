@@ -1120,7 +1120,10 @@ $('#view').addEventListener('click', e => {
     const order = Object.keys(SHIFTS), dir = order.indexOf(d.shift) > order.indexOf(ui.shift) ? 'from-right' : 'from-left';
     ui.shift = d.shift; render(); replay($('#view .list'), dir);
   }
-  else if (d.zone) { ui.zone = ui.tab === 'dashboard' && ui.zone === d.zone ? null : d.zone; render(); } // Dashboard: nochmal tippen = schließen
+  else if (d.zone) {
+    const prev = ui.zone; ui.zone = ui.tab === 'dashboard' && ui.zone === d.zone ? null : d.zone; render();
+    if (ui.tab === 'putzplan' && ui.zone !== prev) replay($('.pp-detail'), 'enter'); // Aufgaben des Bereichs poppen auf
+  } // Dashboard: nochmal tippen = schließen
   else if (d.edit !== undefined) openTask(d.edit);
   else if (d.del && confirm('Aufgabe wirklich löschen?')) { db.tasks = db.tasks.filter(t => t.id !== d.del); save(); render(); }
   else if (el.id === 'deviceLogout') deviceLogout();
