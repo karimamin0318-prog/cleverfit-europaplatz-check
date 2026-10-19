@@ -320,12 +320,22 @@ function pickTask(id) {
   else Object.assign(ui, { pick: id, hideMap: false });
   render();
 }
+// Animationen: einmal abspielen (Klasse neu setzen); bei „weniger Bewegung“ im System aus
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const replay = (el, cls) => { if (!el || reduceMotion()) return; el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 function toggle(id) {
   const t = db.tasks.find(x => x.id === id);
   const k = t.id + '|' + periodKey(t);
-  if (db.done[k]) delete db.done[k]; else db.done[k] = new Date().toISOString();
-  ui.pick = null; ui.hideMap = false; // nach dem Abhaken weiter mit der nächsten Aufgabe
-  save(); render();
+  const commit = () => {
+    if (db.done[k]) delete db.done[k]; else db.done[k] = new Date().toISOString();
+    ui.pick = null; ui.hideMap = false; // nach dem Abhaken weiter mit der nächsten Aufgabe
+    save(); render();
+  };
+  const rows = [...document.querySelectorAll(`[data-toggle="${CSS.escape(id)}"]`)].map(b => b.closest('.strip, .task, .sign')).filter(Boolean);
+  if (db.done[k] || reduceMotion() || !rows.length) return commit();
+  if (rows.some(r => r.classList.contains('checking'))) return; // läuft schon
+  rows.forEach(r => r.classList.add('checking'));
+  setTimeout(commit, 520); // Haken + grüner Strich sichtbar, dann rutscht die Aufgabe weg
 }
 const timeOf = t => new Date(t).toTimeString().slice(0, 5);
 
@@ -333,7 +343,7 @@ function taskRow(t, meta, overdue = false) {
   const d = doneAt(t);
   return `<div class="task ${d ? 'done' : overdue ? 'overdue' : ''}" data-toggle="${t.id}" role="checkbox" aria-checked="${!!d}" tabindex="0">
     <div class="check">${d ? '✓' : ''}</div>
-    ${iconChip(t)}<div class="body"><div class="title">${esc(t.title)}</div>
+    ${iconChip(t)}<div class="body"><div class="title"><span class="tx">${esc(t.title)}</span></div>
     <div class="meta">${meta}${d ? ` <span class="badge green">erledigt ${timeOf(d)}</span>` : ''}</div></div></div>`;
 }
 const shiftOpts = sel => `<option value="">— keine Schicht —</option>` +
@@ -423,7 +433,7 @@ function dashRow(t, isNext = false) {
   const stripe = t.type === 'intervall' ? 'var(--red)' : SHIFTS[s]?.color || 'transparent';
   const late = over ? `<em class="sp-late">${since > 0 ? `überfällig seit ${since} T.` : 'überfällig'}</em>` : '';
   return `<div class="strip ${d ? 'done' : ''} ${ui.pick === t.id ? 'picked' : ''} ${isNext ? 'next' : ''}" data-pick="${t.id}" tabindex="0" role="button" aria-pressed="${ui.pick === t.id}" style="--stripe:${stripe}">
-    <span class="sp-tm ${/\d/.test(when) ? '' : 'txt'}">${when}</span><span class="sp-ti">${esc(t.title)}${late}</span>
+    <span class="sp-tm ${/\d/.test(when) ? '' : 'txt'}">${when}</span><span class="sp-ti"><span class="tx">${esc(t.title)}</span>${late}</span>
     <span class="sp-pl">${d ? `✓ ${timeOf(d)}` : esc(placeNames(t).join(' · '))}</span>
     <button class="check" data-toggle="${t.id}" aria-label="${d ? 'Wieder öffnen' : 'Erledigt'}">${d ? '✓' : ''}</button></div>`;
 }
@@ -625,7 +635,7 @@ const views = {
       <td><button class="btn small ghost" data-edit="${t.id}">Bearbeiten</button> <button class="btn small ghost" data-del="${t.id}">Löschen</button></td></tr>`).join('');
     const zones = db.zones.map(z => `<tr><td><input data-zname="${z.id}" value="${esc(z.name)}"></td>
       <td><select data-zshift="${z.id}">${shiftOpts(z.shift)}</select></td></tr>`).join('');
-    return `<div class="row" style="justify-content:space-between"><h2>Verwaltung</h2><button class="btn" data-edit="">+ Neue Aufgabe</button></div>
+    return `<div class="page-head"><h2>Verwaltung</h2><button class="btn" data-edit="">+ Neue Aufgabe</button></div>
       ${dataSection()}
       <div class="admin-sec"><div class="tasks-head"><h3>Aufgaben</h3>${timeRange()}</div><table>${tasks}</table></div>
       <div class="admin-sec"><div class="row" style="justify-content:space-between"><h3>Putzbereiche & Schicht</h3>
@@ -672,6 +682,14 @@ function validData(d) {
     && Object.values(d.done).every(v => typeof v === 'string' && !isNaN(Date.parse(v)))
     && (d.holidays || []).every(date) && (d.layouts || []).every(l => zonesOk(l.zones) && markersOk(l.markers));
 }
+// Bedien-Symbole im gleichen Linienstil wie die Seitenleiste
+const UI_ICON = Object.fromEntries(Object.entries({
+  download: '<path d="M12 3.5v11M7.5 10 12 14.5l4.5-4.5M4.5 19.5h15"/>',
+  upload: '<path d="M12 14.5v-11M7.5 8 12 3.5 16.5 8M4.5 19.5h15"/>',
+  file: '<path d="M6 3.5h7.5l4.5 4.5v12.5H6z"/><path d="M13.5 3.5V8H18"/>',
+  share: '<circle cx="17.5" cy="6" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18" r="2.5"/><path d="m8.7 10.8 6.6-3.6M8.7 13.2l6.6 3.6"/>',
+  undo: '<path d="M9 5 4.5 9.5 9 14"/><path d="M4.5 9.5H14a5.5 5.5 0 0 1 0 11h-3"/>',
+}).map(([k, p]) => [k, `<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`]));
 function dataSection() {
   const imp = ui.importData, fmt = iso => iso ? new Date(iso).toLocaleString('de-AT', { dateStyle: 'medium', timeStyle: 'short' }) : 'unbekannt';
   const list = c => Object.entries(c).map(([k, v]) => `<li><b>${v}</b> ${k}</li>`).join('');
@@ -683,15 +701,15 @@ function dataSection() {
         <button class="btn small ghost" data-import="cancel">Abbrechen</button></div>
       <p class="meta">„Nur Layout & Punkte“ behält eure Aufgaben und Häkchen und tauscht Karte, Punkte, gespeicherte Layouts und eigene Emojis aus.</p></div>` : '';
   const canShare = !!navigator.canShare?.({ files: [new File([''], 'x.json', { type: 'application/json' })] });
-  const undo = localStorage.getItem(BACKUP_KEY) ? '<button class="btn small ghost" data-import="undo">Letzten Import rückgängig machen</button>' : '';
+  const undo = localStorage.getItem(BACKUP_KEY) ? `<button class="btn small ghost" data-import="undo">${UI_ICON.undo}Letzten Import rückgängig machen</button>` : '';
   return `<div class="admin-sec"><h3>Daten & Backup</h3>
     <p class="meta">Speichert <b>alles</b> in einer Datei: Aufgaben, Häkchen, Layout, Punkte, gespeicherte Layouts, Feiertage, eigene Emojis. Passwörter sind nicht enthalten.</p>
     <div class="data-grid">
-      <div><h4>Exportieren</h4><p class="meta">Als Backup am PC/in der Cloud ablegen oder an ein anderes Gerät schicken.</p>
-        <div class="row"><button class="btn small" data-export="download">Datei herunterladen</button>
-          ${canShare ? '<button class="btn small ghost" data-export="share">Teilen … (Mail, WhatsApp, Drive)</button>' : ''}</div></div>
-      <div><h4>Importieren</h4><p class="meta">Backup-Datei auswählen – du siehst vorher, was drin ist.</p>
-        <div class="row"><label class="btn small ghost">📂 Datei auswählen<input type="file" id="importFile" accept=".json,application/json" hidden></label>${undo}</div></div>
+      <div class="data-card"><span class="dc-ico">${UI_ICON.download}</span><div><h4>Exportieren</h4><p class="meta">Als Backup am PC/in der Cloud ablegen oder an ein anderes Gerät schicken.</p>
+        <div class="row"><button class="btn small" data-export="download">${UI_ICON.download}Datei herunterladen</button>
+          ${canShare ? `<button class="btn small ghost" data-export="share">${UI_ICON.share}Teilen … (Mail, WhatsApp, Drive)</button>` : ''}</div></div></div>
+      <div class="data-card"><span class="dc-ico">${UI_ICON.upload}</span><div><h4>Importieren</h4><p class="meta">Backup-Datei auswählen – du siehst vorher, was drin ist.</p>
+        <div class="row"><label class="btn small ghost">${UI_ICON.file}Datei auswählen<input type="file" id="importFile" accept=".json,application/json" hidden></label>${undo}</div></div></div>
     </div>${preview}</div>`;
 }
 // Monats-Backup: Vermerk „backup|JJJJ-MM“ in der Datenbank – sobald ein Gerät gespeichert hat, ist die Erinnerung überall weg
@@ -1065,6 +1083,7 @@ function render() {
   const f = document.activeElement, fk = $('#view').contains(f) && ['toggle', 'pick', 'zone', 'shift', 'edit'].map(k =>
     f.dataset?.[k] !== undefined && `[data-${k}="${CSS.escape(f.dataset[k])}"]`).find(Boolean);
   $('#view').innerHTML = views[ui.tab]();
+  if (render.tab !== ui.tab) { if (render.tab) replay($('#view'), 'enter'); render.tab = ui.tab; }
   if (fk) $('#view').querySelector(fk)?.focus();
   if (ui.tab === 'admin') applyRange();
 }
@@ -1087,9 +1106,13 @@ $('#view').addEventListener('click', e => {
     else db.holidays = db.holidays.filter(x => x !== d.holiday);
     save(); render();
   }
-  else if (d.markers !== undefined) { ui.showMarkers = !ui.showMarkers; render(); }
+  else if (d.markers !== undefined) {
+    const show = () => { ui.showMarkers = !ui.showMarkers; render(); if (ui.showMarkers) document.querySelectorAll('#view .map').forEach(m => replay(m, 'm-in')); };
+    const maps = document.querySelectorAll('#view .map');
+    if (ui.showMarkers && !reduceMotion()) { maps.forEach(m => m.classList.add('m-out')); setTimeout(show, 180); } else show();
+  }
   else if (d.pick) { pickTask(d.pick); }
-  else if (d.shift) { ui.shift = d.shift; render(); }
+  else if (d.shift) { ui.shift = d.shift; render(); replay($('#view .list'), 'enter'); }
   else if (d.zone) { ui.zone = ui.tab === 'dashboard' && ui.zone === d.zone ? null : d.zone; render(); } // Dashboard: nochmal tippen = schließen
   else if (d.edit !== undefined) openTask(d.edit);
   else if (d.del && confirm('Aufgabe wirklich löschen?')) { db.tasks = db.tasks.filter(t => t.id !== d.del); save(); render(); }
@@ -1134,11 +1157,15 @@ function setTheme(t) {
 }
 setTheme(document.documentElement.dataset.theme || 'dark');
 // Seitenleiste ein-/ausklappen, pro Gerät gemerkt
-const setSide = mini => { document.documentElement.classList.toggle('side-mini', mini); $('#brandBtn').tabIndex = mini ? 0 : -1; try { localStorage.setItem('cf-side', mini ? 'mini' : 'full'); } catch {} };
+const setSide = mini => { document.documentElement.classList.toggle('side-mini', mini); try { localStorage.setItem('cf-side', mini ? 'mini' : 'full'); } catch {} };
 $('#sideToggle').onclick = () => setSide(true);
-$('#brandBtn').onclick = () => { if (document.documentElement.classList.contains('side-mini')) setSide(false); }; // eingeklappt: Logo klappt wieder aus
-$('#brandBtn').tabIndex = document.documentElement.classList.contains('side-mini') ? 0 : -1;
-$('#themeBtn').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+$('#brandBtn').onclick = () => setSide(!document.documentElement.classList.contains('side-mini')); // Logo klappt ein und aus
+$('#themeBtn').onclick = () => {
+  const root = document.documentElement;
+  if (!reduceMotion()) { root.classList.add('theming'); setTimeout(() => root.classList.remove('theming'), 400); }
+  setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
+  replay([...document.querySelectorAll('#themeBtn > span')].find(s => s.offsetParent), 'spin'); // das jetzt sichtbare Symbol
+};
 
 $('#adminBtn').onclick = () => {
   if (ui.admin) {

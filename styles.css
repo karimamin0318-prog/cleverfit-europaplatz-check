@@ -14,6 +14,10 @@
   --plate: #fff; --plate-ink: #0d0d0d; --plate-edge: #0d0d0d; /* Punkte auf der Karte */
   --track: #e2e2e2;
   --cond: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  /* Bewegung: eine Kurve, drei Dauern – alle Animationen im selben Takt */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --t-fast: .18s; --t: .3s; --t-slow: .52s;
+  --ok-tint: color-mix(in srgb, var(--ok) 12%, var(--card));
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
@@ -96,10 +100,9 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .list { display: flex; flex-direction: column; gap: 5px; }
 .task { display: flex; align-items: center; gap: 14px; background: var(--card); padding: 12px 16px; border-left: 6px solid transparent; cursor: pointer; }
 .task.overdue { border-left-color: var(--red); }
-.task.done { opacity: .5; }
-.task.done .title { text-decoration: line-through; }
+.task.done .title { color: var(--muted); }
 .check { flex: none; width: 36px; height: 36px; border: 2px solid var(--muted); display: grid; place-items: center; color: var(--card); font-weight: 900; background: transparent; }
-.task.done .check { background: var(--black); border-color: var(--black); }
+.task.done .check { background: var(--ok); border-color: var(--ok); color: #fff; }
 .task .body { flex: 1; min-width: 0; }
 .title { font: 800 18px var(--cond); letter-spacing: .4px; text-transform: uppercase; }
 .meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
@@ -197,9 +200,9 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .strip .check:hover { border-color: var(--black); }
 .strip.next { box-shadow: inset 0 0 0 2px var(--red); }
 .strip.picked { box-shadow: inset 0 0 0 2px var(--black); }
-.strip.done { opacity: .5; }
-.strip.done .sp-ti { text-decoration: line-through; }
-.strip.done .check { background: var(--black); border-color: var(--black); }
+.strip.done .sp-ti, .strip.done .sp-tm { color: var(--muted); }
+.strip.done .check { background: var(--ok); border-color: var(--ok); color: #fff; }
+.strip.done .sp-pl { color: var(--ok); }
 .done-box { margin-top: 14px; }
 .done-box summary { cursor: pointer; font: 800 15px var(--cond); text-transform: uppercase; letter-spacing: 2px; padding: 10px 4px; color: var(--muted); }
 .done-box .list { margin-top: 6px; }
@@ -366,7 +369,11 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 #ortSummary { margin: 6px 2px 0; }
 
 /* Daten & Backup */
-.data-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 8px; }
+.data-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-top: 14px; }
+.data-card { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 16px; background: var(--card2); padding: 18px; }
+.dc-ico { width: 52px; height: 52px; display: grid; place-items: center; background: var(--black); color: var(--card); }
+.dc-ico .glyph { width: 26px; height: 26px; stroke-width: 1.8; }
+.data-card .row { gap: 8px; }
 .data-grid h4 { margin: 0 0 4px; font: 800 16px var(--cond); letter-spacing: 1px; text-transform: uppercase; }
 .data-grid .meta { margin: 0 0 10px; }
 .import-box { margin-top: 16px; padding: 14px; border: 2px solid var(--black); }
@@ -381,6 +388,43 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .login-card label { display: block; font-size: 14px; font-weight: 600; margin-top: 12px; }
 .login-card input { display: block; width: 100%; margin-top: 4px; padding: 10px; border: 1px solid var(--line); }
 .login-card .btn { width: 100%; margin-top: 8px; padding: 12px; }
+
+/* Knöpfe mit Symbol */
+.btn .glyph { display: inline-block; width: 16px; height: 16px; margin-right: 7px; vertical-align: -3px; stroke-width: 2; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 4px 0 16px; }
+.page-head h2 { margin: 0; }
+
+/* ===== Bewegung ===== */
+/* Tabwechsel: Inhalt gleitet von unten herein, Blöcke leicht versetzt */
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+#view.enter > *, .list.enter > * { animation: rise var(--t) var(--ease) both; }
+#view.enter > :nth-child(2), .list.enter > :nth-child(2) { animation-delay: 30ms; }
+#view.enter > :nth-child(3), .list.enter > :nth-child(3) { animation-delay: 60ms; }
+#view.enter > :nth-child(n+4), .list.enter > :nth-child(n+4) { animation-delay: 90ms; }
+.tabs button, .seg button { transition: color var(--t-fast), background-color var(--t-fast), border-color var(--t) var(--ease); }
+
+/* Abhaken: Kästchen wird grün mit Haken, grüner Strich zieht durch den Titel, Zeile färbt sich */
+.tx { background: linear-gradient(var(--ok), var(--ok)) no-repeat 0 58% / 0 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; transition: background-size var(--t-slow) var(--ease); }
+.done .tx, .checking .tx { background-size: 100% 2px; }
+.strip, .task { transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease); }
+.strip.done, .task.done, .strip.checking, .task.checking { background: var(--ok-tint); }
+.check { transition: background-color var(--t-fast), border-color var(--t-fast); }
+.checking .check { background: var(--ok); border-color: var(--ok); color: #fff; animation: pop var(--t) var(--ease); }
+.checking .check::after { content: '✓'; animation: pop var(--t) var(--ease); }
+@keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.sign { transition: background-color var(--t) var(--ease); }
+.sign.checking { background: var(--ok); }
+.sign.checking .sg-done { background: #fff; color: var(--ok); }
+
+/* Punkte ein-/ausblenden: Schilder ploppen auf bzw. schrumpfen weg */
+.map .marker > :not(.hit) { transform-box: fill-box; transform-origin: center; }
+.map.m-in .marker > :not(.hit, .pulse) { animation: pop var(--t) var(--ease) both; }
+.map.m-out .marker > :not(.hit) { transition: transform var(--t-fast) var(--ease), opacity var(--t-fast); transform: scale(.4); opacity: 0; }
+
+/* Hell/Dunkel: Symbol dreht sich hinein, Farben blenden weich über */
+@keyframes spin-in { from { transform: rotate(-90deg) scale(.4); opacity: 0; } }
+.theme-btn > span.spin .glyph { animation: spin-in var(--t) var(--ease); }
+.theming, .theming * { transition: background-color var(--t) var(--ease), color var(--t) var(--ease), border-color var(--t) var(--ease), fill var(--t) var(--ease) !important; }
 
 /* Tastatur: sichtbarer Fokus */
 :focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
@@ -414,7 +458,8 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .side-mini .side .tabs button { gap: 0; padding: 0 0 0 15px; }
 .side-mini .theme-seg button, .side-mini .theme-seg button span { gap: 0; }
 .side-mini .side .admin-btn { display: grid; place-items: center; width: 100%; }
-@media (prefers-reduced-motion: reduce) { .side, .side * { transition: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } .side, .side * { transition: none !important; } }
 @media (max-width: 1100px) {
   .hourbar { grid-template-columns: minmax(0, 1fr) auto; gap: 12px 20px; }
   .hb-track { grid-column: 1 / -1; grid-row: 2; margin-right: 70px; }
