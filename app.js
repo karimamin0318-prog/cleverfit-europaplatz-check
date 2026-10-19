@@ -1072,6 +1072,8 @@ function setTheme(t) {
   document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeSet === t));
 }
 setTheme(document.documentElement.dataset.theme || 'dark');
+// Seitenleiste ein-/ausklappen, pro Gerät gemerkt
+$('#sideToggle').onclick = () => { const m = document.documentElement.classList.toggle('side-mini'); try { localStorage.setItem('cf-side', m ? 'mini' : 'full'); } catch {} };
 document.querySelector('.theme-seg').onclick = e => { const b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); };
 
 $('#adminBtn').onclick = () => {
