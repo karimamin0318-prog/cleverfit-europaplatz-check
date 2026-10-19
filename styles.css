@@ -275,6 +275,27 @@ main.full .ed-bar { margin-bottom: 8px; }
 .admin-sec td select { width: 100%; }
 .admin-sec label.btn { display: inline-flex; align-items: center; }
 .ed-help li::marker { color: var(--red); }
+/* Aufgaben: Zeitfenster-Regler neben der Überschrift */
+.tasks-head { display: flex; align-items: center; gap: 28px; margin-bottom: 14px; }
+.tasks-head h3 { margin: 0; flex: none; }
+.tr { flex: 1; min-width: 0; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 18px; user-select: none; -webkit-user-select: none; touch-action: none; }
+.tr-shifts, .tr-track, .tr-ticks { grid-column: 1; position: relative; }
+.tr-shifts { height: 24px; }
+.tr-shifts button { position: absolute; top: 0; height: 22px; border: 0; background: none; color: var(--muted); font: 800 12px var(--cond); letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; border-bottom: 2px solid transparent; }
+.tr-shifts button:hover { color: var(--black); }
+.tr-shifts button.on { color: var(--black); border-bottom-color: var(--c); }
+.tr-track { height: 30px; cursor: pointer; }
+.tr-track > i { position: absolute; top: 12px; height: 6px; opacity: .35; }
+.tr-win { position: absolute; top: 4px; height: 22px; background: color-mix(in srgb, var(--black) 10%, transparent); box-shadow: inset 0 0 0 2px var(--black); cursor: grab; }
+.tr-win:active { cursor: grabbing; }
+.tr-h { position: absolute; top: -5px; width: 14px; height: 32px; margin-left: -7px; background: var(--black); cursor: ew-resize; }
+.tr-h[data-h="l"] { left: 0; } .tr-h[data-h="r"] { left: 100%; }
+.tr-h::after { content: ''; position: absolute; left: 5px; top: 9px; width: 4px; height: 14px; border-left: 1px solid var(--card); border-right: 1px solid var(--card); }
+.tr-ticks { height: 16px; }
+.tr-ticks em { position: absolute; transform: translateX(-50%); font: 700 11px var(--cond); font-style: normal; color: var(--muted); }
+.tr-label { grid-column: 2; grid-row: 2; align-self: center; font: 800 14px var(--cond); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+@media (max-width: 800px) { .tasks-head { flex-direction: column; align-items: stretch; gap: 10px; } }
+
 /* Layout-Editor: Werkzeugleiste als Tafel */
 main.full > .ed-bar { background: var(--card); padding: 10px 14px; gap: 8px 10px; }
 main.full > .ed-bar h2 { font-size: 22px; margin-right: 14px; }

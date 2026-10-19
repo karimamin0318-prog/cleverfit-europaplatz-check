@@ -462,6 +462,63 @@ const progress = list => {
   return `<div class="progress" title="${n}/${list.length}"><div style="width:${list.length ? n / list.length * 100 : 0}%"></div></div>`;
 };
 
+// Zeitfenster-Regler in der Verwaltung: Aufgaben nach Uhrzeit filtern (Öffnung bis Schluss, Werktags-Schichten als Farben)
+const TR = { min: mins(SHIFT_TIMES.wt.frueh[0]), max: mins(SHIFT_TIMES.wt.spaet[1]), step: 15, minLen: 30 };
+// Zeitfenster einer Aufgabe in Minuten; ohne Uhrzeit: ihre Schicht; Intervall-Aufgaben haben keine Uhrzeit → immer sichtbar
+function taskWin(t) {
+  if (t.type === 'intervall') return [-1, 1e4];
+  const s = SHIFT_TIMES.wt[taskShift(t)], a = t.time || t.from || s?.[0], b = t.to || t.time || s?.[1];
+  return a ? [mins(a), mins(b)] : [-1, 1e4];
+}
+const trPct = m => (m - TR.min) / (TR.max - TR.min) * 100;
+const trHM = m => hm(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
+function timeRange() {
+  const [a, b] = ui.range ??= [TR.min, TR.max];
+  const hours = []; for (let m = TR.min; m <= TR.max; m += 60) hours.push(m);
+  return `<div class="tr" id="tr"><div class="tr-shifts">${Object.entries(SHIFT_TIMES.wt).map(([k, [f, e]]) =>
+      `<button type="button" data-trshift="${k}" style="left:${trPct(mins(f))}%;width:${trPct(mins(e)) - trPct(mins(f))}%;--c:${SHIFTS[k].color}">${SHIFTS[k].name.replace('schicht', '')}</button>`).join('')}</div>
+    <div class="tr-track">${Object.entries(SHIFT_TIMES.wt).map(([k, [f, e]]) => `<i style="left:${trPct(mins(f))}%;width:${trPct(mins(e)) - trPct(mins(f))}%;background:${SHIFTS[k].color}"></i>`).join('')}
+      <div class="tr-win" style="left:${trPct(a)}%;width:${trPct(b) - trPct(a)}%"><b class="tr-h" data-h="l"></b><b class="tr-h" data-h="r"></b></div></div>
+    <div class="tr-ticks">${hours.map(m => `<em style="left:${trPct(m)}%">${trHM(m).slice(0, 2)}</em>`).join('')}</div>
+    <span class="tr-label"></span></div>`;
+}
+// Ausgewählte Zeit anwenden ohne Neuzeichnen (läuft bei jedem Ziehen)
+// Überschneidung: ein Fenster, das genau am Anfang endet, zählt nicht
+function applyRange() {
+  const [a, b] = ui.range, tr = $('#tr'); if (!tr) return;
+  Object.assign(tr.querySelector('.tr-win').style, { left: trPct(a) + '%', width: trPct(b) - trPct(a) + '%' });
+  let n = 0; const rows = document.querySelectorAll('tr[data-win]');
+  rows.forEach(r => { const [f, e] = r.dataset.win.split(',').map(Number), on = f === e ? f >= a && f < b : e > a && f < b; r.hidden = !on; n += on; });
+  tr.querySelectorAll('[data-trshift]').forEach(x => { const [f, e] = SHIFT_TIMES.wt[x.dataset.trshift].map(mins); x.classList.toggle('on', f === a && e === b); });
+  tr.querySelector('.tr-label').textContent = `${trHM(a)}–${trHM(b)} · ${n} von ${rows.length}`;
+}
+{ // Ziehen: Ränder ändern die Länge, die Mitte verschiebt das Fenster, Schicht antippen = genau diese Schicht
+  let drag = null;
+  const at = (tr, x) => { const r = tr.querySelector('.tr-track').getBoundingClientRect(); return TR.min + (x - r.left) / r.width * (TR.max - TR.min); };
+  const snap = m => Math.round(m / TR.step) * TR.step, clamp = (m, lo, hi) => Math.max(lo, Math.min(hi, m));
+  document.addEventListener('pointerdown', e => {
+    const tr = e.target.closest('#tr'); if (!tr) return;
+    const sh = e.target.closest('[data-trshift]');
+    if (sh) { ui.range = SHIFT_TIMES.wt[sh.dataset.trshift].map(mins); return applyRange(); }
+    const h = e.target.closest('[data-h]')?.dataset.h, [a, b] = ui.range;
+    if (!h && !e.target.closest('.tr-win')) {
+      if (!e.target.closest('.tr-track')) return; // daneben in die Leiste getippt: Fenster dorthin schieben
+      const len = b - a, c = snap(at(tr, e.clientX) - len / 2); ui.range = [clamp(c, TR.min, TR.max - len), clamp(c, TR.min, TR.max - len) + len]; applyRange();
+    }
+    drag = { tr, h, x0: at(tr, e.clientX), r0: [...ui.range] };
+    tr.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const d = at(drag.tr, e.clientX) - drag.x0, [a, b] = drag.r0;
+    if (drag.h === 'l') ui.range = [clamp(snap(a + d), TR.min, b - TR.minLen), b];
+    else if (drag.h === 'r') ui.range = [a, clamp(snap(b + d), a + TR.minLen, TR.max)];
+    else { const s = clamp(snap(a + d), TR.min, TR.max - (b - a)); ui.range = [s, s + b - a]; }
+    applyRange();
+  });
+  document.addEventListener('pointerup', () => { drag = null; });
+}
+
 const views = {
   dashboard() {
     const list = todayTasks().sort(byTime);
@@ -564,13 +621,13 @@ const views = {
     };
     const order = { schicht: 0, intervall: 1, zone: 2 };
     const stripeOf = t => t.type === 'intervall' ? 'var(--red)' : SHIFTS[taskShift(t)]?.color || 'transparent';
-    const tasks = [...db.tasks].sort((a, b) => order[a.type] - order[b.type]).map(t => `<tr style="--stripe:${stripeOf(t)}"><td>${iconChip(t)}<b>${esc(t.title)}</b><div class="meta">${where(t)}${ortOf(t)}</div></td>
+    const tasks = [...db.tasks].sort((a, b) => order[a.type] - order[b.type]).map(t => `<tr style="--stripe:${stripeOf(t)}" data-win="${taskWin(t)}"><td>${iconChip(t)}<b>${esc(t.title)}</b><div class="meta">${where(t)}${ortOf(t)}</div></td>
       <td><button class="btn small ghost" data-edit="${t.id}">Bearbeiten</button> <button class="btn small ghost" data-del="${t.id}">Löschen</button></td></tr>`).join('');
     const zones = db.zones.map(z => `<tr><td><input data-zname="${z.id}" value="${esc(z.name)}"></td>
       <td><select data-zshift="${z.id}">${shiftOpts(z.shift)}</select></td></tr>`).join('');
     return `<div class="row" style="justify-content:space-between"><h2>Verwaltung</h2><button class="btn" data-edit="">+ Neue Aufgabe</button></div>
       ${dataSection()}
-      <div class="admin-sec"><h3>Aufgaben</h3><table>${tasks}</table></div>
+      <div class="admin-sec"><div class="tasks-head"><h3>Aufgaben</h3>${timeRange()}</div><table>${tasks}</table></div>
       <div class="admin-sec"><div class="row" style="justify-content:space-between"><h3>Putzbereiche & Schicht</h3>
         <button class="btn small" data-tab="layout">Layout-Editor öffnen</button></div><table>${zones}</table></div>
       <div class="admin-sec"><h3>Zusätzliche Feiertage / Wochenend-Tage</h3>
@@ -1009,6 +1066,7 @@ function render() {
     f.dataset?.[k] !== undefined && `[data-${k}="${CSS.escape(f.dataset[k])}"]`).find(Boolean);
   $('#view').innerHTML = views[ui.tab]();
   if (fk) $('#view').querySelector(fk)?.focus();
+  if (ui.tab === 'admin') applyRange();
 }
 
 // --- Events ---
