@@ -701,15 +701,15 @@ function dataSection() {
         <button class="btn small ghost" data-import="cancel">Abbrechen</button></div>
       <p class="meta">„Nur Layout & Punkte“ behält eure Aufgaben und Häkchen und tauscht Karte, Punkte, gespeicherte Layouts und eigene Emojis aus.</p></div>` : '';
   const canShare = !!navigator.canShare?.({ files: [new File([''], 'x.json', { type: 'application/json' })] });
-  const undo = localStorage.getItem(BACKUP_KEY) ? `<button class="btn small ghost" data-import="undo">${UI_ICON.undo}Letzten Import rückgängig machen</button>` : '';
+  const undo = localStorage.getItem(BACKUP_KEY) ? `<button class="btn small ghost" data-import="undo">${UI_ICON.undo}Import rückgängig</button>` : '';
   return `<div class="admin-sec"><h3>Daten & Backup</h3>
     <p class="meta">Speichert <b>alles</b> in einer Datei: Aufgaben, Häkchen, Layout, Punkte, gespeicherte Layouts, Feiertage, eigene Emojis. Passwörter sind nicht enthalten.</p>
     <div class="data-grid">
-      <div class="data-card"><span class="dc-ico">${UI_ICON.download}</span><div><h4>Exportieren</h4><p class="meta">Als Backup am PC/in der Cloud ablegen oder an ein anderes Gerät schicken.</p>
-        <div class="row"><button class="btn small" data-export="download">${UI_ICON.download}Datei herunterladen</button>
-          ${canShare ? `<button class="btn small ghost" data-export="share">${UI_ICON.share}Teilen … (Mail, WhatsApp, Drive)</button>` : ''}</div></div></div>
-      <div class="data-card"><span class="dc-ico">${UI_ICON.upload}</span><div><h4>Importieren</h4><p class="meta">Backup-Datei auswählen – du siehst vorher, was drin ist.</p>
-        <div class="row"><label class="btn small ghost">${UI_ICON.file}Datei auswählen<input type="file" id="importFile" accept=".json,application/json" hidden></label>${undo}</div></div></div>
+      <div class="data-card"><span class="dc-ico">${UI_ICON.download}</span><div><h4>Exportieren</h4><p class="meta">Als Backup am PC/in der Cloud ablegen oder an ein anderes Gerät schicken.</p></div>
+        <div class="dc-act"><button class="btn small" data-export="download">${UI_ICON.download}Datei herunterladen</button>
+          ${canShare ? `<button class="btn small ghost" data-export="share">${UI_ICON.share}Teilen</button>` : ''}</div></div>
+      <div class="data-card"><span class="dc-ico">${UI_ICON.upload}</span><div><h4>Importieren</h4><p class="meta">Backup-Datei auswählen – du siehst vorher, was drin ist.</p></div>
+        <div class="dc-act"><label class="btn small ghost">${UI_ICON.file}Datei auswählen<input type="file" id="importFile" accept=".json,application/json" hidden></label>${undo}</div></div>
     </div>${preview}</div>`;
 }
 // Monats-Backup: Vermerk „backup|JJJJ-MM“ in der Datenbank – sobald ein Gerät gespeichert hat, ist die Erinnerung überall weg
@@ -1082,6 +1082,7 @@ function render() {
   $('#view').classList.toggle('wide', ui.tab === 'dashboard' || ui.tab === 'putzplan'); // passt in den Bildschirm
   const f = document.activeElement, fk = $('#view').contains(f) && ['toggle', 'pick', 'zone', 'shift', 'edit'].map(k =>
     f.dataset?.[k] !== undefined && `[data-${k}="${CSS.escape(f.dataset[k])}"]`).find(Boolean);
+  $('#view').classList.remove('enter');
   $('#view').innerHTML = views[ui.tab]();
   if (render.tab !== ui.tab) { if (render.tab) replay($('#view'), 'enter'); render.tab = ui.tab; }
   if (fk) $('#view').querySelector(fk)?.focus();
@@ -1089,7 +1090,7 @@ function render() {
 }
 
 // --- Events ---
-$('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) { ui.tab = b.dataset.tab; render(); } };
+$('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b && b.dataset.tab !== ui.tab) { ui.tab = b.dataset.tab; render(); } };
 
 $('#view').addEventListener('click', e => {
   if (e.target.closest('#edSvg')) return; // Editor-Karte läuft über Pointer-Events
@@ -1098,7 +1099,7 @@ $('#view').addEventListener('click', e => {
   const d = el.dataset;
   if (d.ed) edAction(d.ed, d.val);
   else if (d.colorby) { db.colorBy = d.colorby; save(); render(); }
-  else if (d.tab) { ui.tab = d.tab; render(); }
+  else if (d.tab) { if (d.tab !== ui.tab) { ui.tab = d.tab; render(); } }
   else if (d.toggle) toggle(d.toggle);
   else if (d.mittel !== undefined) { if (mittelActive()) delete db.mittelDays[today()]; else db.mittelDays[today()] = new Date().toISOString(); ui.shift = currentShift(); save(); render(); }
   else if (d.holiday) {
@@ -1112,7 +1113,11 @@ $('#view').addEventListener('click', e => {
     if (ui.showMarkers && !reduceMotion()) { maps.forEach(m => m.classList.add('m-out')); setTimeout(show, 180); } else show();
   }
   else if (d.pick) { pickTask(d.pick); }
-  else if (d.shift) { ui.shift = d.shift; render(); replay($('#view .list'), 'enter'); }
+  else if (d.shift) {
+    if (d.shift === ui.shift) return;
+    const order = Object.keys(SHIFTS), dir = order.indexOf(d.shift) > order.indexOf(ui.shift) ? 'from-right' : 'from-left';
+    ui.shift = d.shift; render(); replay($('#view .list'), dir);
+  }
   else if (d.zone) { ui.zone = ui.tab === 'dashboard' && ui.zone === d.zone ? null : d.zone; render(); } // Dashboard: nochmal tippen = schließen
   else if (d.edit !== undefined) openTask(d.edit);
   else if (d.del && confirm('Aufgabe wirklich löschen?')) { db.tasks = db.tasks.filter(t => t.id !== d.del); save(); render(); }

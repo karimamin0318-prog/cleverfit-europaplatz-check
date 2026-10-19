@@ -218,6 +218,7 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .map.board .zone rect { fill: var(--zone); }
 .map.board .zone text { fill: var(--zone-ink); }
 .map.board .zone.hl rect { fill: var(--red); }
+.map.board .zone.hl, .map.board .zone.hl:hover { filter: none; }
 .map.board .zone.hl text { fill: #fff; }
 .map.board.focus .zone:not(.hl) { opacity: .45; }
 
@@ -369,11 +370,15 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 #ortSummary { margin: 6px 2px 0; }
 
 /* Daten & Backup */
-.data-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-top: 14px; }
-.data-card { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 16px; background: var(--card2); padding: 18px; }
-.dc-ico { width: 52px; height: 52px; display: grid; place-items: center; background: var(--black); color: var(--card); }
-.dc-ico .glyph { width: 26px; height: 26px; stroke-width: 1.8; }
-.data-card .row { gap: 8px; }
+.data-grid { display: grid; gap: 8px; margin-top: 14px; }
+.data-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 16px; background: var(--card2); padding: 12px 14px; }
+.data-card h4 { margin: 0 0 2px; }
+.data-card .meta { margin: 0; }
+.dc-ico { width: 44px; height: 44px; display: grid; place-items: center; background: var(--black); color: var(--card); }
+.dc-ico .glyph { width: 22px; height: 22px; stroke-width: 1.8; }
+.dc-act { display: flex; gap: 8px; justify-content: flex-end; }
+.dc-act .btn { white-space: nowrap; min-height: 36px; display: inline-flex; align-items: center; }
+@media (max-width: 800px) { .data-card { grid-template-columns: 44px minmax(0, 1fr); } .dc-act { grid-column: 1 / -1; justify-content: flex-start; flex-wrap: wrap; } }
 .data-grid h4 { margin: 0 0 4px; font: 800 16px var(--cond); letter-spacing: 1px; text-transform: uppercase; }
 .data-grid .meta { margin: 0 0 10px; }
 .import-box { margin-top: 16px; padding: 14px; border: 2px solid var(--black); }
@@ -401,6 +406,13 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 #view.enter > :nth-child(2), .list.enter > :nth-child(2) { animation-delay: 30ms; }
 #view.enter > :nth-child(3), .list.enter > :nth-child(3) { animation-delay: 60ms; }
 #view.enter > :nth-child(n+4), .list.enter > :nth-child(n+4) { animation-delay: 90ms; }
+@keyframes from-right { from { opacity: 0; transform: translateX(28px); } }
+@keyframes from-left { from { opacity: 0; transform: translateX(-28px); } }
+.list.from-right > * { animation: from-right var(--t) var(--ease) both; }
+.list.from-left > * { animation: from-left var(--t) var(--ease) both; }
+.list:is(.from-right, .from-left) > :nth-child(2) { animation-delay: 25ms; }
+.list:is(.from-right, .from-left) > :nth-child(3) { animation-delay: 50ms; }
+.list:is(.from-right, .from-left) > :nth-child(n+4) { animation-delay: 75ms; }
 .tabs button, .seg button { transition: color var(--t-fast), background-color var(--t-fast), border-color var(--t) var(--ease); }
 
 /* Abhaken: Kästchen wird grün mit Haken, grüner Strich zieht durch den Titel, Zeile färbt sich */
