@@ -768,10 +768,42 @@ function importData(mode) {
 }
 
 // --- Layout-Editor (nur Admin). Arbeitet auf einer Kopie (ui.draft), erst „Speichern“ übernimmt sie. ---
-Object.assign(ui, { draft: null, draftM: null, sel: null, snap: true, grid: 10, pieceMode: false, lib: false, libMsg: '', libStudio: 'Clever Fit Europaplatz' });
+Object.assign(ui, { draft: null, draftM: null, sel: null, multi: null, band: null, snap: true, grid: 10, pieceMode: false, lib: false, libMsg: '', libStudio: 'Clever Fit Europaplatz' });
 const edZone = () => ui.sel?.zone && ui.draft.find(z => z.id === ui.sel.zone);
 const edMarker = () => ui.sel?.marker && ui.draftM.find(m => m.id === ui.sel.marker);
 const snapV = v => ui.snap ? Math.round(v / ui.grid) * ui.grid : Math.round(v);
+// Mehrfachauswahl (Rahmen ziehen / Strg+Klick): ui.multi = { z: Set(Bereich-IDs), m: Set(Punkt-IDs) }
+const multiCount = () => ui.multi ? ui.multi.z.size + ui.multi.m.size : 0;
+function multiToggle(kind, id) {
+  ui.multi ??= { z: new Set(), m: new Set() };
+  if (ui.sel?.zone) ui.multi.z.add(ui.sel.zone); // bisherige Einzelauswahl kommt mit dazu
+  if (ui.sel?.marker) ui.multi.m.add(ui.sel.marker);
+  ui.sel = null;
+  const s = ui.multi[kind]; if (s.has(id)) s.delete(id); else s.add(id);
+  if (!multiCount()) ui.multi = null;
+}
+// Genau ein Ding ausgewählt → normale Einzelauswahl (mit Griffen und Eigenschaften)
+function multiSettle() {
+  if (multiCount() !== 1) return;
+  const [z] = ui.multi.z, [m] = ui.multi.m;
+  ui.sel = z ? { zone: z, piece: 0 } : { marker: m }; ui.multi = null;
+}
+// Ganze Auswahl gemeinsam verschieben, als Block in der Zeichenfläche gehalten
+function groupMove(orig, dx, dy) {
+  const rs = orig.zones.flatMap(([, r]) => r), ms = orig.markers.map(([, p]) => p);
+  const x1 = Math.min(...rs.map(r => r[0]), ...ms.map(p => p[0])), y1 = Math.min(...rs.map(r => r[1]), ...ms.map(p => p[1]));
+  const x2 = Math.max(...rs.map(r => r[0] + r[2]), ...ms.map(p => p[0])), y2 = Math.max(...rs.map(r => r[1] + r[3]), ...ms.map(p => p[1]));
+  const ddx = Math.max(-x1, Math.min(ED.W - x2, snapV(x1 + dx) - x1)), ddy = Math.max(-y1, Math.min(ED.H - y2, snapV(y1 + dy) - y1));
+  orig.zones.forEach(([z, r]) => z.rects.forEach((q, k) => { q[0] = r[k][0] + ddx; q[1] = r[k][1] + ddy; }));
+  orig.markers.forEach(([m, [x, y]]) => { m.x = x + ddx; m.y = y + ddy; });
+}
+const groupOrig = () => ({ zones: ui.draft.filter(z => ui.multi.z.has(z.id)).map(z => [z, structuredClone(z.rects)]),
+  markers: ui.draftM.filter(m => ui.multi.m.has(m.id)).map(m => [m, [m.x, m.y]]) });
+{ // Selbsttest: Block bleibt am Rand stehen, Abstände bleiben gleich
+  const z = { rects: [[10, 10, 20, 20]] }, m = { x: 50, y: 50 }, s = ui.snap; ui.snap = false;
+  groupMove({ zones: [[z, [[10, 10, 20, 20]]]], markers: [[m, [50, 50]]] }, -30, 5);
+  console.assert(z.rects[0][0] === 0 && m.x === 40 && m.y === 55, 'groupMove', z.rects[0], m); ui.snap = s;
+}
 const HANDLES = { nw: [0, 0], n: [.5, 0], ne: [1, 0], e: [1, .5], se: [1, 1], s: [.5, 1], sw: [0, 1], w: [0, .5] };
 
 function edLayer() {
@@ -785,8 +817,10 @@ function edLayer() {
   const order = z ? [...ui.draft.filter(d => d !== z), z] : ui.draft; // ausgewählter Bereich oben
   const mk = edMarker();
   const all = ui.scaleMode ? (([x, y, w, h]) => `<rect class="all-box" x="${x - 4}" y="${y - 4}" width="${w + 8}" height="${h + 8}" rx="6"/>`)(layoutBox()) : '';
-  return order.map(d => zoneSvg(d, { sel: d === z, piece: d === z ? ui.sel.piece : -1 })).join('') + handles
-    + ui.draftM.map(m => markerSvg(m, { sel: m === mk })).join('') + all;
+  const inZ = d => ui.multi?.z.has(d.id), inM = m => ui.multi?.m.has(m.id);
+  const band = ui.band ? (([x1, y1, x2, y2]) => `<rect class="band" x="${Math.min(x1, x2)}" y="${Math.min(y1, y2)}" width="${Math.abs(x2 - x1)}" height="${Math.abs(y2 - y1)}"/>`)(ui.band) : '';
+  return order.map(d => zoneSvg(d, { sel: d === z, piece: d === z ? ui.sel.piece : -1 }).replace('class="zone ', inZ(d) ? 'class="zone msel ' : 'class="zone ')).join('') + handles
+    + ui.draftM.map(m => markerSvg(m, { sel: m === mk || inM(m) })).join('') + all + band;
 }
 
 // --- Ganzes Layout gleichmäßig skalieren (Bereiche + Punkte, Abstände wachsen mit) ---
@@ -850,6 +884,10 @@ function libPanel() {
 function edPanel() {
   if (ui.scaleMode) return scalePanel();
   if (ui.lib) return libPanel();
+  if (multiCount()) return `<div class="admin-sec ed-form"><h3>Auswahl</h3>
+    <p class="big-count"><b>${ui.multi.z.size}</b> Bereiche · <b>${ui.multi.m.size}</b> Punkte</p>
+    <ul class="meta"><li>Ziehen oder Pfeiltasten = alles gemeinsam verschieben</li><li>Strg + Klick = hinzufügen/entfernen</li><li>Esc oder leere Fläche antippen = aufheben</li></ul>
+    <div class="row"><button class="btn small ghost" data-ed="clearSel">Auswahl aufheben</button></div></div>`;
   const z = edZone(), mk = edMarker();
   if (mk) return `<div class="admin-sec ed-form"><h3>Punkt</h3>
     <label>Name<input data-mf="name" value="${esc(mk.name)}"></label>
@@ -933,7 +971,18 @@ const svgPt = (svg, e) => new DOMPoint(e.clientX, e.clientY).matrixTransform(svg
 $('#view').addEventListener('pointerdown', e => {
   const svg = e.target.closest('#edSvg');
   if (!svg) return;
-  const mg = e.target.closest('[data-marker]');
+  const mg = e.target.closest('[data-marker]'), zg = e.target.closest('[data-zone]'), add = e.ctrlKey || e.metaKey;
+  if (add && (mg || zg)) { multiToggle(mg ? 'm' : 'z', mg ? mg.dataset.marker : zg.dataset.zone); ui.lib = ui.scaleMode = false; return redrawEd(); }
+  if (multiCount() && (mg ? ui.multi.m.has(mg.dataset.marker) : zg && ui.multi.z.has(zg.dataset.zone))) { // Teil der Auswahl → alles zusammen ziehen
+    drag = { group: groupOrig(), start: svgPt(svg, e) };
+    svg.setPointerCapture(e.pointerId); return;
+  }
+  if (!e.target.dataset.h && !mg && !zg) { // leere Fläche: Auswahlrahmen aufziehen (Strg = zur Auswahl hinzufügen)
+    if (!add) { ui.multi = null; ui.sel = null; }
+    const p = svgPt(svg, e); ui.band = [p.x, p.y, p.x, p.y]; drag = { band: true };
+    svg.setPointerCapture(e.pointerId); return redrawEd();
+  }
+  ui.multi = null;
   if (mg) {
     ui.sel = { marker: mg.dataset.marker }; ui.lib = ui.scaleMode = false;
     const m = edMarker();
@@ -951,17 +1000,41 @@ $('#view').addEventListener('pointerdown', e => {
 });
 $('#view').addEventListener('pointermove', e => {
   if (!drag) return;
-  const p = svgPt($('#edSvg'), e), dx = p.x - drag.start.x, dy = p.y - drag.start.y, i = ui.sel.piece;
+  const p = svgPt($('#edSvg'), e);
+  if (drag.band) { ui.band[2] = p.x; ui.band[3] = p.y; return redrawEd(false); }
+  const dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+  if (drag.group) { groupMove(drag.group, dx, dy); return redrawEd(false); }
+  const i = ui.sel.piece;
   if (drag.m) moveMarker(drag.m, drag.orig, dx, dy);
   else if (drag.hd) edResize(drag.z.rects[i], drag.orig[i], drag.hd, dx, dy);
   else edMove(drag.z, ui.pieceMode ? [i] : drag.orig.map((_, k) => k), drag.orig, dx, dy);
   redrawEd(false);
 });
-const endDrag = () => { if (drag) { drag = null; redrawEd(); } };
+const endDrag = () => {
+  if (drag?.band) { // alles, was der Rahmen berührt, kommt in die Auswahl
+    const [x1, x2] = [ui.band[0], ui.band[2]].sort((p, q) => p - q), [y1, y2] = [ui.band[1], ui.band[3]].sort((p, q) => p - q);
+    ui.band = null;
+    if (x2 - x1 > 3 || y2 - y1 > 3) {
+      ui.multi ??= { z: new Set(), m: new Set() };
+      if (ui.sel?.zone) ui.multi.z.add(ui.sel.zone); if (ui.sel?.marker) ui.multi.m.add(ui.sel.marker); ui.sel = null;
+      ui.draft.forEach(z => { if (z.rects.some(([x, y, w, h]) => x < x2 && x + w > x1 && y < y2 && y + h > y1)) ui.multi.z.add(z.id); });
+      ui.draftM.forEach(m => { if (m.x >= x1 && m.x <= x2 && m.y >= y1 && m.y <= y2) ui.multi.m.add(m.id); });
+      if (!multiCount()) ui.multi = null; else multiSettle();
+    }
+  }
+  if (drag) { drag = null; redrawEd(); }
+};
 $('#view').addEventListener('pointerup', endDrag);
 $('#view').addEventListener('pointercancel', endDrag);
 
 document.addEventListener('keydown', e => {
+  if (ui.tab === 'layout' && multiCount() && !e.target.matches('input, select, textarea')) {
+    if (e.key === 'Escape') { ui.multi = null; return redrawEd(); }
+    if (!e.key.startsWith('Arrow')) return;
+    e.preventDefault();
+    const step = ui.snap ? ui.grid : 1, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    groupMove(groupOrig(), ...d); return redrawEd();
+  }
   const z = ui.tab === 'layout' && edZone(), mk = ui.tab === 'layout' && edMarker();
   if (!z && !mk || !e.key.startsWith('Arrow') || e.target.matches('input, select, textarea')) return;
   e.preventDefault();
@@ -995,6 +1068,8 @@ $('#view').addEventListener('input', e => {
 });
 
 function edAction(a, val) {
+  if (a === 'clearSel') { ui.multi = null; return redrawEd(); }
+  ui.multi = null; // jede andere Werkzeug-Aktion hebt die Mehrfachauswahl auf
   const z = edZone(), mk = edMarker();
   if (a === 'scale') { ui.scaleMode = !ui.scaleMode; ui.lib = false; ui.sel = null; return render(); } // render: Knopf zeigt „aktiv“
   if (a === 'rotate') { rotateAll(); return redrawEd(); }

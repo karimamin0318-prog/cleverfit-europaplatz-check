@@ -252,6 +252,12 @@ h3 { font: 800 19px var(--cond); letter-spacing: 1px; text-transform: uppercase;
 .ed-form h3 { margin: 14px 0 8px; font-size: 16px; }
 .ed-form .lbl { display: block; font-size: 14px; font-weight: 600; }
 .ed-help ul { margin: 0; padding-left: 18px; line-height: 1.7; }
+/* Mehrfachauswahl: gestrichelter roter Rand je Bereich, Auswahlrahmen beim Ziehen */
+.editor .zone.msel rect { stroke: var(--red); stroke-width: 3; stroke-dasharray: 7 4; }
+.editor .band { fill: color-mix(in srgb, var(--red) 10%, transparent); stroke: var(--red); stroke-width: 1.5; stroke-dasharray: 5 4; pointer-events: none; }
+.editor:has(.zone.msel) .zone.msel, .editor .marker.sel { cursor: move; }
+.big-count { font: 800 18px var(--cond); text-transform: uppercase; letter-spacing: .5px; margin: 0 0 8px; }
+.big-count b { font-size: 26px; color: var(--red-text); }
 .editor .all-box { fill: none; stroke: var(--red); stroke-width: 2; stroke-dasharray: 8 5; pointer-events: none; }
 main.full { max-width: none; padding: 16px 22px 24px; }
 main.full .ed-bar { margin-bottom: 8px; }
