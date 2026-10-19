@@ -1082,8 +1082,10 @@ function render() {
   $('#view').classList.toggle('wide', ui.tab === 'dashboard' || ui.tab === 'putzplan'); // passt in den Bildschirm
   const f = document.activeElement, fk = $('#view').contains(f) && ['toggle', 'pick', 'zone', 'shift', 'edit'].map(k =>
     f.dataset?.[k] !== undefined && `[data-${k}="${CSS.escape(f.dataset[k])}"]`).find(Boolean);
+  const keep = render.tab === ui.tab && ['.b-list', '.pp-detail'].map(s => [s, $(s)?.scrollTop]); // gleicher Tab: Scrollposition der Listen behalten
   $('#view').classList.remove('enter');
   $('#view').innerHTML = views[ui.tab]();
+  if (keep) keep.forEach(([s, y]) => { if (y && $(s)) $(s).scrollTop = y; });
   if (render.tab !== ui.tab) { if (render.tab) replay($('#view'), 'enter'); render.tab = ui.tab; }
   if (fk) $('#view').querySelector(fk)?.focus();
   if (ui.tab === 'admin') applyRange();
