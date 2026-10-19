@@ -354,11 +354,31 @@ dialog label.chk input { width: auto; display: inline; margin: 0; }
 .icon-pick button { display: grid; place-items: center; font-size: 20px; padding: 6px 0; background: var(--card); color: var(--black); border: 1px solid var(--line); cursor: pointer; }
 .icon-pick button.active { border-color: var(--black); box-shadow: 0 0 0 1px var(--black); }
 
+/* Seitenpanel im Editor: Feldbeschriftungen klein in Versalien, Felder einheitlich hoch */
+.ed-form label, .ed-form .lbl { font: 800 12px var(--cond); letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+.ed-form label small { font: 600 11px Barlow; letter-spacing: 0; text-transform: none; margin-left: 4px; }
+.ed-form input:not([type=color]):not([type=checkbox]), .ed-form select { min-height: 40px; padding: 0 10px; border: 1px solid var(--line); font: 600 15px Barlow; letter-spacing: 0; text-transform: none; color: var(--black); }
+.ed-form input:focus, .ed-form select:focus { outline: none; border-color: var(--red); }
 /* Layout-Bibliothek */
-.lib-item { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
-.lib-thumb { flex: none; width: 96px; height: auto; }
-.lib-info { flex: 1; min-width: 0; font-size: 14px; }
-.lib-info .row { margin: 8px 0 0; }
+.lib-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.lib-head h3 { margin: 0; }
+.icon-btn { width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; }
+.icon-btn .glyph { margin: 0; width: 17px; height: 17px; }
+.lib .btn.ghost { border-color: var(--line); color: var(--black); }
+.lib .btn.ghost:hover { border-color: var(--black); }
+.lib .btn.ghost.danger:hover { border-color: var(--red); color: var(--red-text); }
+.lib-k { display: flex; align-items: center; gap: 8px; font: 800 13px var(--cond); letter-spacing: 2px; text-transform: uppercase; margin: 4px 0 12px; }
+.lib-k b { background: var(--card2); padding: 1px 7px; font-size: 12px; }
+.lib-save { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: center; margin: 4px 0 22px; }
+.lib-list { display: flex; flex-direction: column; gap: 8px; }
+.lib-item { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px 12px; background: var(--card2); padding: 10px; }
+.lib-thumb { width: 64px; height: auto; display: block; }
+.lib-info { min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 13px; }
+.lib-info b { font: 800 17px var(--cond); text-transform: uppercase; letter-spacing: .4px; overflow-wrap: anywhere; }
+.lib-studio { color: var(--muted); font-weight: 600; }
+.lib-note { font-style: italic; }
+.lib-act { grid-column: 1 / -1; display: flex; gap: 6px; }
+.lib-act .btn:first-child { flex: 1; justify-content: center; display: inline-flex; align-items: center; min-height: 34px; }
 .lib-msg { background: color-mix(in srgb, var(--ok) 14%, var(--card)); padding: 8px 10px; font-size: 14px; margin: 0 0 12px; }
 
 /* Eigene Symbole (Linien, schwarz-weiß) */

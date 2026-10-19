@@ -701,6 +701,8 @@ const UI_ICON = Object.fromEntries(Object.entries({
   stack: '<path d="M12 4 3.5 8.5 12 13l8.5-4.5z"/><path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>',
   reset: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3L4 9.5M4 4v5.5h5.5"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10.5 11v5.5M13.5 11v5.5"/>',
 }).map(([k, p]) => [k, `<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`]));
 function dataSection() {
   const imp = ui.importData, fmt = iso => iso ? new Date(iso).toLocaleString('de-AT', { dateStyle: 'medium', timeStyle: 'short' }) : 'unbekannt';
@@ -867,18 +869,20 @@ const thumb = l => { const [x, y, w, h] = fitView(l.zones);
 function libPanel() {
   const fmt = iso => new Date(iso).toLocaleString('de-AT', { dateStyle: 'short', timeStyle: 'short' });
   const list = [...db.layouts].sort((a, b) => a.studio.localeCompare(b.studio) || b.savedAt.localeCompare(a.savedAt)).map(l => `<div class="lib-item">
-    ${thumb(l)}<div class="lib-info"><b>${esc(l.studio)}</b><div>${esc(l.name)}</div>
-      <div class="meta">${fmt(l.savedAt)} · ${l.zones.length} Bereiche · ${l.markers.length} Punkte</div>${l.note ? `<div class="meta">${esc(l.note)}</div>` : ''}
-      <div class="row"><button class="btn small" data-ed="libLoad" data-val="${l.id}">Laden</button>
-        <button class="btn small ghost danger" data-ed="libDel" data-val="${l.id}">Löschen</button></div></div></div>`).join('');
-  return `<div class="admin-sec ed-form">${ui.libMsg ? `<p class="lib-msg">${ui.libMsg}</p>` : ''}
-    <h3>Aktuelles Layout speichern</h3>
-    <label>Studio-Name<input id="libStudio" value="${esc(ui.libStudio)}"></label>
+    ${thumb(l)}<div class="lib-info"><b>${esc(l.name)}</b><span class="lib-studio">${esc(l.studio)}</span>
+      <span class="meta">${fmt(l.savedAt)} · ${l.zones.length} Bereiche · ${l.markers.length} Punkte</span>${l.note ? `<span class="meta lib-note">${esc(l.note)}</span>` : ''}</div>
+    <div class="lib-act"><button class="btn small ghost" data-ed="libLoad" data-val="${l.id}">${UI_ICON.download}Laden</button>
+      <button class="btn small ghost icon-btn danger" data-ed="libDel" data-val="${l.id}" title="Löschen" aria-label="Löschen">${UI_ICON.trash}</button></div></div>`).join('');
+  return `<div class="admin-sec ed-form lib">
+    <div class="lib-head"><h3>Layouts</h3><button class="btn small ghost icon-btn" data-ed="lib" title="Schließen" aria-label="Schließen">${UI_ICON.x}</button></div>
+    ${ui.libMsg ? `<p class="lib-msg">${ui.libMsg}</p>` : ''}
+    <span class="lib-k">Aktuelles Layout speichern</span>
+    <label>Studio<input id="libStudio" value="${esc(ui.libStudio)}"></label>
     <label>Bezeichnung<input id="libName" placeholder="z.B. Sommer-Umbau 2026"></label>
-    <label>Notiz (optional)<input id="libNote" placeholder="z.B. neue Cardio-Reihe"></label>
-    <button class="btn small" data-ed="libSave">In Bibliothek speichern</button>
-    <h3>Gespeicherte Layouts (${db.layouts.length})</h3>${list || '<p class="meta">Noch keine Layouts gespeichert.</p>'}
-    <div class="row"><button class="btn small ghost" data-ed="lib">Schließen</button></div></div>`;
+    <label>Notiz <small>optional</small><input id="libNote" placeholder="z.B. neue Cardio-Reihe"></label>
+    <button class="btn lib-save" data-ed="libSave">${UI_ICON.check}In Bibliothek speichern</button>
+    <span class="lib-k">Gespeichert <b>${db.layouts.length}</b></span>
+    <div class="lib-list">${list || '<p class="meta">Noch keine Layouts gespeichert.</p>'}</div></div>`;
 }
 
 function edPanel() {
