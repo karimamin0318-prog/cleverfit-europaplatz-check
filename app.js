@@ -204,7 +204,7 @@ const CHEF_TODOS = {
     },
   },
 };
-const CHEF_HOURLY = [ // stündlich: Frühschicht immer (Fenster = Schichtzeit des Tages), Mittelschicht werktags
+const CHEF_HOURLY = [ // stündlich über die ganze Öffnungszeit, ein Häkchen pro Stunde für alle Schichten
   ['Hygienecheck (Kabinen, Massageliege, Solarium, Fläche)', ['massage', 'sol1', 'sol2']],
   ['Bodyshake, Kaffeeautomat & Getränkebar auf Bestand prüfen', []],
 ];
@@ -224,9 +224,8 @@ function chefTasks() {
         }
       });
     }
-  for (const shift of ['frueh', 'mittel'])
-    for (const [title, zoneIds] of CHEF_HOURLY)
-      out.push({ id: uid(), type: 'schicht', title, icon: guessIcon(title), ...rulesOf(title), shift, hourly: true, ...(shift === 'mittel' && { days: 'wt' }), ...(zoneIds.length && { zoneIds }) });
+  for (const [title, zoneIds] of CHEF_HOURLY)
+    out.push({ id: uid(), type: 'schicht', title, icon: guessIcon(title), ...rulesOf(title), shift: 'frueh', hourly: true, ...(zoneIds.length && { zoneIds }) });
   return out;
 }
 // Vorlagen + selbst angelegte Emojis (werden beim Speichern eines Punkts gemerkt)
@@ -309,6 +308,9 @@ db.markers ??= []; // Punkte: Mülltonne, Wasserspender … ({ id, name, icon, x
 db.customIcons ??= []; // eigene Punkt-Emojis [[icon, name]]
 db.layouts ??= []; // gespeicherte Layouts: { id, studio, name, note, savedAt, zones, markers }
 delete db.pin; // früher: Admin-PIN, jetzt Admin-Konten
+// früher je Schicht eine Kopie jedes stündlichen Checks mit eigenem Häkchen → dieselbe Stunde kam wieder; nur die erste bleibt
+const seen = new Set();
+db.tasks = db.tasks.filter(t => !t.hourly || !seen.has(t.title) && seen.add(t.title));
 }
 normalize();
 { // Selbsttest dueSince: verpasste Periode zählt weiter
@@ -430,13 +432,12 @@ const taskZones = t => [...new Set([...(t.type === 'zone' ? [t.zoneId] : t.zoneI
 const taskShift = t => effShift(t.type === 'zone' ? db.zones.find(z => z.id === t.zoneId)?.shift : t.shift);
 const isToday = iso => !!iso && bizDay(new Date(iso)) === today();
 // Intervall-Aufgaben nur, wenn fällig (offen) oder heute erledigt
-const win = t => [t.from || SHIFTS[t.shift]?.from || '00:00', t.to || SHIFTS[t.shift]?.to || '24:00'];
 const nextHour = () => String(+nowHM().slice(0, 2) + 1).padStart(2, '0') + ':00';
 const whenText = t => t.hourly ? `stündlich · bis ${hm(nextHour())}` : t.time ? `${hm(t.time)} Uhr` : t.from ? `${hm(t.from)}–${hm(t.to)} Uhr` : '';
 // überfällig: Uhrzeit/Fensterende vorbei; stündliche nie (sie kommen jede Stunde neu)
 const isOverdue = t => !t.hourly && !doneAt(t) && !!(t.to || t.time) && nowHM() > (t.to || t.time);
-// Stündliche Aufgaben nur während ihres Zeitfensters (sonst Schicht) zeigen
-const hourlyActive = t => { const [a, b] = win(t), n = nowHM(); return n >= a && n < b; };
+// Stündliche Aufgaben laufen über die ganze Öffnungszeit, egal welche Schicht gerade ist
+const hourlyActive = () => { const o = SHIFT_TIMES[dayType()], n = nowHM(); return n >= o.frueh[0] && n < o.spaet[1]; };
 const todayTasks = () => db.tasks.filter(t => dayOk(t) && (t.hourly ? hourlyActive(t) : t.type !== 'intervall' || period(t) >= 0 && (!doneAt(t) || isToday(doneAt(t)))));
 // Intervall = wichtig, kommt zuerst; sonst Uhrzeit, Zeitfenster-Beginn oder Schichtbeginn
 const sortKey = t => t.type === 'intervall' ? '' : t.hourly ? nowHM().slice(0, 2) + ':00' : t.time || t.from || SHIFTS[taskShift(t)]?.from || '99:99';
