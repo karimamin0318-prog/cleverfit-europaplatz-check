@@ -771,14 +771,15 @@ function importData(mode) {
   const imp = ui.importData;
   if (mode === 'undo') {
     if (!confirm('Stand vor dem letzten Import wiederherstellen?')) return;
-    db = JSON.parse(localStorage.getItem(BACKUP_KEY)); localStorage.removeItem(BACKUP_KEY);
+    // Häkchen seit dem Import behalten: sonst löscht der Abgleich sie auf allen Geräten
+    db = { ...JSON.parse(localStorage.getItem(BACKUP_KEY)), done: db.done, mittelDays: db.mittelDays }; localStorage.removeItem(BACKUP_KEY);
     normalize(); save(); return render();
   }
   ui.importData = null;
   if (mode === 'cancel' || !imp) return render();
   if (!confirm(mode === 'all' ? 'Aufgaben, Layout und Punkte für ALLE Geräte durch die Datei ersetzen? (Heutige Häkchen bleiben erhalten.)' : 'Layout und Punkte für ALLE Geräte durch die aus der Datei ersetzen?')) return render();
   localStorage.setItem(BACKUP_KEY, JSON.stringify(db));
-  const next = mode === 'all' ? { ...imp.data, done: { ...imp.data.done, ...db.done }, colorBy: db.colorBy }
+  const next = mode === 'all' ? { ...imp.data, done: { ...imp.data.done, ...db.done }, mittelDays: { ...imp.data.mittelDays, ...db.mittelDays }, colorBy: db.colorBy }
     : { ...db, zones: imp.data.zones, markers: imp.data.markers || [], layouts: imp.data.layouts || db.layouts,
         customIcons: imp.data.customIcons || db.customIcons, colorBy: imp.data.colorBy || db.colorBy };
   if (mode === 'layout') { // Putzaufgaben ohne Bereich wären verwaist
