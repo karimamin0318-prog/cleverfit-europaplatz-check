@@ -1,5 +1,4 @@
-// Studio Check – Clever Fit Europaplatz. Alles lokal im Browser (localStorage).
-// shortcut: Daten nur auf diesem Gerät; für mehrere Geräte ein Backend (z.B. Supabase) nachrüsten.
+// Studio Check – Clever Fit Europaplatz. Daten in Supabase, localStorage nur als Zwischenspeicher.
 
 const hm = t => t >= '24:00' ? String(+t.slice(0, 2) - 24).padStart(2, '0') + t.slice(2) : t; // Anzeige: 24:30 → 00:30
 const FREE_COLOR = '#bdbdbd'; // Bereich ohne Schicht und ohne eigene Farbe
@@ -676,13 +675,11 @@ const views = {
 };
 
 // --- Daten & Backup: alles als eine .json-Datei raus/rein (Aufgaben, Häkchen, Layout, Punkte, Layouts, Feiertage …) ---
-// Der Admin-PIN kommt nicht in die Datei; beim Import bleibt der PIN dieses Geräts.
 const BACKUP_KEY = KEY + '-vor-import'; // Stand vor dem letzten Import (für „Rückgängig“)
 const counts = d => ({ Aufgaben: d.tasks.length, Bereiche: d.zones.length, Punkte: d.markers?.length || 0,
   'gespeicherte Layouts': d.layouts?.length || 0, Häkchen: Object.keys(d.done || {}).length });
 function backupFile() {
-  const { pin, ...data } = db; // pin: nur in alten Daten
-  const json = JSON.stringify({ app: 'studio-check', version: 1, exportedAt: new Date().toISOString(), studio: ui.libStudio, data }, null, 2);
+  const json = JSON.stringify({ app: 'studio-check', version: 1, exportedAt: new Date().toISOString(), studio: ui.libStudio, data: db }, null, 2);
   const stamp = new Date().toLocaleString('sv').slice(0, 16).replace(/[ :]/g, '-');
   return new File([json], `studio-check-${stamp}.json`, { type: 'application/json' });
 }
