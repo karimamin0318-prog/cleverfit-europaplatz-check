@@ -429,7 +429,8 @@ function fitView(zones) {
 
 // --- Dashboard: alle heutigen Aufgaben in zeitlicher Reihenfolge + Karte ---
 const taskZones = t => [...new Set([...(t.type === 'zone' ? [t.zoneId] : t.zoneIds || []), ...taskMarkers(t).map(markerZone).filter(Boolean)])];
-const taskShift = t => effShift(t.type === 'zone' ? db.zones.find(z => z.id === t.zoneId)?.shift : t.shift);
+// stündliche Checks gehören immer zur Schicht, die gerade läuft
+const taskShift = t => t.hourly ? currentShift() : effShift(t.type === 'zone' ? db.zones.find(z => z.id === t.zoneId)?.shift : t.shift);
 const isToday = iso => !!iso && bizDay(new Date(iso)) === today();
 // Intervall-Aufgaben nur, wenn fällig (offen) oder heute erledigt
 const nextHour = () => String(+nowHM().slice(0, 2) + 1).padStart(2, '0') + ':00';
@@ -499,7 +500,7 @@ const progress = list => {
 const TR = { min: mins(SHIFT_TIMES.wt.frueh[0]), max: mins(SHIFT_TIMES.wt.spaet[1]), step: 15, minLen: 30 };
 // Zeitfenster einer Aufgabe in Minuten; ohne Uhrzeit: ihre Schicht; Intervall-Aufgaben haben keine Uhrzeit → immer sichtbar
 function taskWin(t) {
-  if (t.type === 'intervall') return [-1, 1e4];
+  if (t.type === 'intervall' || t.hourly) return [-1, 1e4];
   const s = SHIFT_TIMES.wt[taskShift(t)], a = t.time || t.from || s?.[0], b = t.to || t.time || s?.[1];
   return a ? [mins(a), mins(b)] : [-1, 1e4];
 }
@@ -597,7 +598,7 @@ const views = {
 
   heute() {
     if (!mittelActive() && ui.shift === 'mittel') ui.shift = 'frueh';
-    const list = db.tasks.filter(t => t.type === 'schicht' && dayOk(t) && effShift(t.shift) === ui.shift)
+    const list = db.tasks.filter(t => t.type === 'schicht' && dayOk(t) && taskShift(t) === ui.shift && (!t.hourly || hourlyActive()))
       .sort(byTime);
     const seg = Object.entries(SHIFTS).filter(([k]) => k !== 'mittel' || mittelActive()).map(([k, s]) =>
       `<button data-shift="${k}" class="${k === ui.shift ? 'active' : ''}">${s.name} <small>${hm(s.from)}–${hm(s.to)}</small></button>`).join('');
@@ -646,7 +647,7 @@ const views = {
 
   admin() {
     const DAYS = { wt: ' · Werktags', we: ' · Wochenende/Feiertag' };
-    const where = t => (t.type === 'schicht' ? SHIFTS[t.shift].name + (DAYS[t.days] || '') + (t.hourly ? ' · stündlich' : '') + (t.time ? ' · ' + hm(t.time) : t.from ? ` · ${hm(t.from)}–${hm(t.to)}` : '')
+    const where = t => (t.type === 'schicht' ? (t.hourly ? 'Stündlich · ganze Öffnungszeit' : SHIFTS[t.shift].name) + (DAYS[t.days] || '') + (t.time ? ' · ' + hm(t.time) : t.from ? ` · ${hm(t.from)}–${hm(t.to)}` : '')
       : t.type === 'intervall' ? `alle ${t.everyDays} Tage ab ${fmtDate(t.startDate)}`
       : 'Putzbereich: ' + esc(db.zones.find(z => z.id === t.zoneId)?.name || '–'));
     const ortOf = t => {
