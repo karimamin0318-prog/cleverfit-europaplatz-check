@@ -1461,7 +1461,8 @@ async function pushChanges() {
   for (const part of chunks(del)) { const { error } = await sb.from('done').delete().in('key', part); if (error) throw error; }
   cloud.done = now;
   const cfg = configJson();
-  if (cfg !== cloud.config && cloud.admin) { // Nicht-Admins ändern keine Aufgaben; Ansichts-Einstellungen bleiben lokal
+  // updatedAt fehlt = noch nie erfolgreich geladen: der Gerätestand kann veraltet sein und darf die Datenbank nicht überschreiben
+  if (cfg !== cloud.config && cloud.admin && cloud.updatedAt !== undefined) { // Nicht-Admins ändern keine Aufgaben; Ansichts-Einstellungen bleiben lokal
     // Ganzes Dokument wird ersetzt: hat ein anderes Gerät seit unserem Laden gespeichert, nicht überschreiben
     const cur = await cloud.admin.from('studio').select('updated_at').eq('id', STUDIO_ID).maybeSingle();
     if (cur.error) throw cur.error;
